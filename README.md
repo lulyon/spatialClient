@@ -1,4 +1,4 @@
 spatialClient
 =============
 
-Spatial client based on Redis/Hiredis and GDAL/OGR
+Spatial client based on Redis/Hiredis and GDAL/OGR.
