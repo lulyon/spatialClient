@@ -13,7 +13,7 @@
 #include <ogrsf_frmts.h>
 
 SpatialClient::SpatialClient() :
-  	con_(NULL) {
+		con_(NULL) {
 }
 
 SpatialClient::~SpatialClient() {
@@ -103,7 +103,27 @@ bool SpatialClient::put(const char *key, const char *value, int size) {
 	return true;
 }
 
+void SpatialClient::putLayer(const OGRLayer *layer) {
+	if(layer == NULL) return;
+	char *bytes = serialize(layer);
+	const char *layername = layer->GetName();
+	assert(bytes != NULL);
+	int length = 0;
+	memcpy(&length, bytes, sizeof(length));
+	put(layername, bytes, length);
+}
+
+OGRLayer *SpatialClient::getLayer(const char *key) {
+	char *bytes = get(key);
+	if(bytes == NULL) return NULL;
+	OGRLayer *layer = deserialize(bytes);
+	return layer; // to avoid the warning.
+}
+
+
 char *SpatialClient::serialize(const OGRLayer *poLayer) {
+	if(poLayer == NULL) return NULL;
+
 	int length = 0;
 	int metadatalength = 0;
 	int attributedeflength = 0;
@@ -117,14 +137,6 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) {
 
 	int geotype = (int) poLayer->GetGeomType();
 	metadatalength += sizeof(geotype);
-
-	double minx, miny, maxx, maxy;
-	OGREnvelope *poEnvelope = new OGREnvelope();
-	minx = poEnvelope->MinX;
-	miny = poEnvelope->MinY;
-	maxx = poEnvelope->MaxX;
-	maxy = poEnvelope->MaxY;
-	metadatalength += sizeof(minx) + sizeof(miny) + sizeof(maxx) + sizeof(maxy); // poEnvelope
 
 	char *strWKT = NULL;
 	OGRSpatialReference *poSR = poLayer->GetSpatialRef();
@@ -205,11 +217,15 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) {
 	}
 	length += featurelength + sizeof(featurelength);
 	length += attributerecordlength + sizeof(attributerecordlength);
+	length += sizeof(length);
 
 	// alloc memory for serialization.
 	char *bytes = malloc((length + 10) * sizeof(char));
+	assert(bytes != NULL);
 
 	int offset = 0;
+	memcpy(bytes + offset, &length, sizeof(length));
+	offset += sizeof(length);
 	// serialize metadata.
 	// metadatalength
 	memcpy(bytes + offset, &metadatalength, sizeof(metadatalength));
@@ -224,16 +240,6 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) {
 	// geometry type
 	memcpy(bytes + offset, &geotype, sizeof(geotype));
 	offset += sizeof(geotype);
-
-	// envelope
-	memcpy(bytes + offset, &minx, sizeof(minx));
-	offset += sizeof(minx);
-	memcpy(bytes + offset, &miny, sizeof(miny));
-	offset += sizeof(miny);
-	memcpy(bytes + offset, &maxx, sizeof(maxx));
-	offset += sizeof(maxx);
-	memcpy(bytes + offset, &maxy, sizeof(maxy));
-	offset += sizeof(maxy);
 
 	// strWKT georefence
 	memcpy(bytes + offset, &strWKTlength, sizeof(strWKTlength));
@@ -370,6 +376,9 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) {
 		return NULL;
 
 	int offset = 0;
+	int length = 0;
+	memcpy(&length, bytes + offset, sizeof(length));
+	offset += sizeof(length);
 	// serialize metadata.
 	// metadatalength
 	int metadatalength = 0;
@@ -389,18 +398,6 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) {
 	int geotype = 0;
 	memcpy(&geotype, bytes + offset, sizeof(geotype));
 	offset += sizeof(geotype);
-
-	// envelope
-	int minx, miny, maxx, maxy;
-	minx = miny = maxx = maxy = 0;
-	memcpy(&minx, bytes + offset, sizeof(minx));
-	offset += sizeof(minx);
-	memcpy(&miny, bytes + offset, sizeof(miny));
-	offset += sizeof(miny);
-	memcpy(&maxx, bytes + offset, sizeof(maxx));
-	offset += sizeof(maxx);
-	memcpy(&maxy, bytes + offset, sizeof(maxy));
-	offset += sizeof(maxy);
 
 	// strWKT georeference
 	int strWKTlength = 0;
@@ -553,7 +550,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) {
 					int strlength;
 					memcpy(&strlength, bytes + offset2, sizeof(strlength));
 					offset2 += sizeof(strlength);
-					char *pstr = (char *) malloc(sizeof(char) *strlength);
+					char *pstr = (char *) malloc(sizeof(char) * strlength);
 					memcpy(pstr, bytes + offset2, strlength);
 					offset2 += strlength;
 
@@ -590,8 +587,8 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) {
 					memcpy(&tag, bytes + offset2, sizeof(tag));
 					offset2 += sizeof(tag);
 
-					feature->SetField(ifield, year, mon, day,
-												hour, min, sec, tag);
+					feature->SetField(ifield, year, mon, day, hour, min, sec,
+							tag);
 					break;
 				default:
 					break;
@@ -605,10 +602,3 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) {
 	return poLayer;
 }
 
-void SpatialClient::putLayer(const OGRLayer *layer) {
-
-}
-
-OGRLayer *SpatialClient::getLayer(const char *key) {
-	return 0; // to avoid the warning.
-}
