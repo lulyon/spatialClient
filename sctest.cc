@@ -13,7 +13,7 @@ int main()
 
 	}
 	else {
-		fprintf(stderr, "Can not connect the redis server\n");
+		fprintf(stderr, "Can't connect the redis server.\n");
 	}
 	return 0;
 }
