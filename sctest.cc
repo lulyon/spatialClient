@@ -8,7 +8,7 @@
 
 int main()
 {
-  SpatialClient client;
+  	SpatialClient client;
 	if(client.connect()) {
 
 	}
