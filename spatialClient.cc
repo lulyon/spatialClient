@@ -12,7 +12,6 @@
 #include <hiredis.h>
 #include <ogrsf_frmts.h>
 
-
 SpatialClient::SpatialClient() :
 		con_(NULL) {
 }
@@ -48,18 +47,18 @@ void SpatialClient::disconnect() {
 	}
 }
 
-char *SpatialClient::get(const char *key) const{
+char *SpatialClient::get(const char *key) const {
 	return get(key, 0);
 }
 
-char *SpatialClient::get(const char *key, int *size) const{
+char *SpatialClient::get(const char *key, int *size) const {
 	if (con_ == NULL) {
-		fprintf(stderr, "Redis connection is not available\n");
+		fprintf(stderr, "Redis connection is not available.\n");
 		return NULL;
 	}
 	redisReply *reply = redisCommand(con_, "GET %s", key);
 	if (reply == NULL || reply->type != REDIS_REPLY_STRING) {
-		fprintf(stderr, "Redis reply error: not a string\n");
+		fprintf(stderr, "Redis reply error: not a string.\n");
 		if (reply)
 			freeReplyObject(reply);
 		return NULL;
@@ -68,7 +67,7 @@ char *SpatialClient::get(const char *key, int *size) const{
 		*size = reply->len;
 	char *result = (char *) malloc((reply->len + 1) * sizeof(char));
 	if (result == NULL) {
-		fprintf(stderr, "redis get result malloc failed\n");
+		fprintf(stderr, "redis get result malloc failed.\n");
 		return NULL;
 	}
 	memcpy(result, reply->str, reply->len + 1);
@@ -83,7 +82,7 @@ bool SpatialClient::put(const char *key, const char *value) const {
 
 bool SpatialClient::put(const char *key, const char *value, int size) const {
 	if (con_ == NULL) {
-		fprintf(stderr, "Redis connection is not available\n");
+		fprintf(stderr, "Redis connection is not available.\n");
 		return false;
 	}
 	redisReply *reply = NULL;
@@ -94,7 +93,7 @@ bool SpatialClient::put(const char *key, const char *value, int size) const {
 	}
 
 	if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
-		fprintf(stderr, "Redis set command error: %s\n", reply->str);
+		fprintf(stderr, "Redis set command error: %s.\n", reply->str);
 		if (reply)
 			freeReplyObject(reply);
 		return false;
@@ -607,3 +606,55 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	return poLayer;
 }
 
+void SpatialClient::putMetadata(OGRLayer *layer) const {
+	LayerMetadata metadata(layer);
+	putMetadata(&metadata);
+}
+
+void SpatialClient::putMetadata(LayerMetadata *metadata) const {
+	if (metadata == NULL) {
+		fprintf(stderr, "Nil LayerMetadata object.\n");
+		return;
+	}
+
+	const char *bytes = metadata->getBytes();
+	if (bytes == NULL) {
+		fprintf(stderr, "Invalid LayerMetadata object.\n");
+		return;
+	}
+	int metadatalength = metadata->getMetadataLength();
+	int layernamelength = metadata->getLayernameLength();
+	const char *layername = metadata->getLayername();
+	const char *prekey = "metadata_";
+	char *key = (char *) malloc(strlen(prekey) + layernamelength + 10);
+	if (key == NULL) {
+		fprintf(stderr, "Fail to alloc memory for metadata key.\n");
+		return;
+	}
+	strcpy(key, prekey);
+	strcat(key, layername);
+	put(key, bytes, metadatalength);
+	free(key);
+}
+
+LayerMetadata * SpatialClient::getMetadata(const char *key) const {
+	if (key == NULL) {
+		return NULL;
+	}
+	const char *prekey = "metadata_";
+	char *longkey = (char *) malloc(strlen(prekey) + strlen(key) + 10);
+	if (longkey == NULL) {
+		fprintf(stderr, "Fail to alloc memory for metadata key.\n");
+		return NULL;
+	}
+	strcpy(longkey, prekey);
+	strcat(longkey, key);
+
+	char *bytes = get(key);
+	free(longkey);
+	if (bytes == NULL) {
+		return NULL;
+	}
+	LayerMetadata *metadata = new LayerMetadata(bytes);
+	return metadata;
+}
