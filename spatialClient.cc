@@ -12,6 +12,7 @@
 #include <hiredis.h>
 #include <ogrsf_frmts.h>
 
+
 SpatialClient::SpatialClient() :
 		con_(NULL) {
 }
@@ -47,11 +48,11 @@ void SpatialClient::disconnect() {
 	}
 }
 
-char *SpatialClient::get(const char *key) {
+char *SpatialClient::get(const char *key) const{
 	return get(key, 0);
 }
 
-char *SpatialClient::get(const char *key, int *size) {
+char *SpatialClient::get(const char *key, int *size) const{
 	if (con_ == NULL) {
 		fprintf(stderr, "Redis connection is not available\n");
 		return NULL;
@@ -76,11 +77,11 @@ char *SpatialClient::get(const char *key, int *size) {
 	return result;
 }
 
-bool SpatialClient::put(const char *key, const char *value) {
+bool SpatialClient::put(const char *key, const char *value) const {
 	return put(key, value, 0);
 }
 
-bool SpatialClient::put(const char *key, const char *value, int size) {
+bool SpatialClient::put(const char *key, const char *value, int size) const {
 	if (con_ == NULL) {
 		fprintf(stderr, "Redis connection is not available\n");
 		return false;
@@ -103,8 +104,9 @@ bool SpatialClient::put(const char *key, const char *value, int size) {
 	return true;
 }
 
-void SpatialClient::putLayer(const OGRLayer *layer) {
-	if(layer == NULL) return;
+void SpatialClient::putLayer(const OGRLayer *layer) const {
+	if (layer == NULL)
+		return;
 	char *bytes = serialize(layer);
 	const char *layername = layer->GetName();
 	assert(bytes != NULL);
@@ -113,16 +115,17 @@ void SpatialClient::putLayer(const OGRLayer *layer) {
 	put(layername, bytes, length);
 }
 
-OGRLayer *SpatialClient::getLayer(const char *key) {
+OGRLayer *SpatialClient::getLayer(const char *key) const {
 	char *bytes = get(key);
-	if(bytes == NULL) return NULL;
+	if (bytes == NULL)
+		return NULL;
 	OGRLayer *layer = deserialize(bytes);
-	return layer; // to avoid the warning.
+	return layer;
 }
 
-
-char *SpatialClient::serialize(const OGRLayer *poLayer) {
-	if(poLayer == NULL) return NULL;
+char *SpatialClient::serialize(const OGRLayer *poLayer) const {
+	if (poLayer == NULL)
+		return NULL;
 
 	int length = 0;
 	int metadatalength = 0;
@@ -241,7 +244,7 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) {
 	memcpy(bytes + offset, &geotype, sizeof(geotype));
 	offset += sizeof(geotype);
 
-	// strWKT georefence
+	// strWKT geo reference
 	memcpy(bytes + offset, &strWKTlength, sizeof(strWKTlength));
 	offset += sizeof(strWKTlength);
 	memcpy(bytes + offset, strWKT, strWKTlength);
@@ -364,7 +367,7 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) {
 	return bytes;
 }
 
-OGRLayer *SpatialClient::deserialize(const char *bytes) {
+OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	OGRRegisterAll();
 	OGRSFDriver *pdriver =
 			OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName("Memory");
@@ -598,6 +601,8 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) {
 
 		}
 	}
+
+	assert(offset2 == length);
 
 	return poLayer;
 }
