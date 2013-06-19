@@ -13,7 +13,7 @@
 #include <ogrsf_frmts.h>
 
 LayerMetadata::LayerMetadata() :
-  	metadatalength_(0), layernamelength_(0), layername_(NULL), geotype_(0), strWKTlength_(
+		metadatalength_(0), layernamelength_(0), layername_(NULL), geotype_(0), strWKTlength_(
 				0), strWKT_(NULL), buffer_(NULL), bufferflag_(UNINITIALIZED) {
 
 }
@@ -77,7 +77,7 @@ const char *LayerMetadata::getBytes() {
 	assert(offset == layernamelength_);
 
 	bufferflag_ = LATEST;
-	return buffer_; // to avoid the warning.
+	return buffer_; 
 }
 
 int LayerMetadata::getMetadataLength() const {
