@@ -49,8 +49,10 @@ const char *LayerMetadata::getBytes() {
 	} else {
 		return buffer_;
 	}
-	if (buffer_ == NULL)
+	if (buffer_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for buffer_.\n");
 		return NULL;
+	}
 
 	char *bytes = buffer_;
 	// serialize members to buffer_
@@ -77,7 +79,7 @@ const char *LayerMetadata::getBytes() {
 	assert(offset == layernamelength_);
 
 	bufferflag_ = LATEST;
-	return buffer_; 
+	return buffer_;
 }
 
 int LayerMetadata::getMetadataLength() const {
@@ -107,9 +109,6 @@ const char *LayerMetadata::getStrWKT() const {
 void LayerMetadata::setMetadata(const OGRLayer *layer) {
 	if (layer == NULL)
 		return;
-	// set buffer flag.
-	if (bufferflag_ == LATEST)
-		bufferflag_ = STALE;
 
 	metadatalength_ = 0;
 	// metadatalength_
@@ -137,13 +136,14 @@ void LayerMetadata::setMetadata(const OGRLayer *layer) {
 	}
 	strWKTlength_ = strlen(strWKT_) + 1;
 	metadatalength_ += strWKTlength_ + sizeof(strWKTlength_);
+
+	// set buffer flag.
+	if (bufferflag_ == LATEST)
+		bufferflag_ = STALE;
 }
 void LayerMetadata::setMetadata(const char * bytes) {
 	if (bytes == NULL)
 		return;
-	// set buffer flag.
-	if (bufferflag_ == LATEST)
-		bufferflag_ = STALE;
 
 	int offset = 0;
 	//metadatalength_
@@ -169,4 +169,20 @@ void LayerMetadata::setMetadata(const char * bytes) {
 	offset += strWKTlength_;
 
 	assert(offset == metadatalength_);
+
+	// alloc memory for buffer_
+	if (bufferflag_ == UNINITIALIZED) {
+		buffer_ = (char *) malloc(metadatalength_);
+	} else {
+		buffer_ = (char *) realloc(buffer_, metadatalength_);
+	}
+	if (buffer_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for buffer_.\n");
+		return;
+	}
+
+	memcpy(buffer_, bytes, metadatalength_);
+
+	// set buffer flag.
+	bufferflag_ = LATEST;
 }
