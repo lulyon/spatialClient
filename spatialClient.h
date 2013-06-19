@@ -11,6 +11,7 @@
 
 struct redisContext;
 class OGRLayer;
+class LayerMetadata;
 
 class SpatialClient {
 public:
@@ -28,8 +29,9 @@ public:
 	void putLayer(const OGRLayer *layer) const;
 	OGRLayer *getLayer(const char *key) const;
 
-	void putMetadata();
-	void getMetadata();
+	void putMetadata(OGRLayer *layer) const;
+	void putMetadata(LayerMetadata *metadata) const;
+	LayerMetadata * getMetadata(const char *key) const;
 
 	void getFeatureCount();
 	void putFeature();
