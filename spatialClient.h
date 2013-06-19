@@ -7,24 +7,26 @@
 #ifndef SPATIALCLIENT_H_
 #define SPATIALCLIENT_H_
 
+#include "layerMetadata.h"
+
 struct redisContext;
 class OGRLayer;
 
 class SpatialClient {
 public:
-  SpatialClient();
+	SpatialClient();
 	~SpatialClient();
 
 	bool connect(const char *ip = "127.0.0.1", int port = 6379, int dbno = 0);
 	void disconnect();
 
-	char *get(const char *key);
-	char *get(const char *key, int *size); // size: return size of the value.
-	bool put(const char *key, const char *value);
-	bool put(const char *key, const char *value, int size); //size means value size.
+	char *get(const char *key) const;
+	char *get(const char *key, int *size) const; // size: return size of the value.
+	bool put(const char *key, const char *value) const;
+	bool put(const char *key, const char *value, int size) const; //size means value size.
 
-	void putLayer(const OGRLayer *layer);
-	OGRLayer *getLayer(const char *key);
+	void putLayer(const OGRLayer *layer) const;
+	OGRLayer *getLayer(const char *key) const;
 
 	void putMetadata();
 	void getMetadata();
@@ -39,8 +41,8 @@ public:
 	void putAttributeRecord();
 	void getAttributeRecord();
 private:
-	char *serialize(const OGRLayer *layer);
-	OGRLayer *deserialize(const char *str);
+	char *serialize(const OGRLayer *poLayer) const;
+	OGRLayer *deserialize(const char *bytes) const;
 	redisContext *con_;
 };
 
