@@ -15,7 +15,12 @@
 LayerMetadata::LayerMetadata() :
 		metadatalength_(0), layernamelength_(0), layername_(NULL), geotype_(0), strWKTlength_(
 				0), strWKT_(NULL), buffer_(NULL), bufferflag_(UNINITIALIZED) {
+}
 
+LayerMetadata::LayerMetadata(const LayerMetadata & metadata) :
+		metadatalength_(0), layernamelength_(0), layername_(NULL), geotype_(0), strWKTlength_(
+				0), strWKT_(NULL), buffer_(NULL), bufferflag_(UNINITIALIZED) {
+	setMetadata(metadata);
 }
 
 LayerMetadata::LayerMetadata(const OGRLayer *layer) :
@@ -117,7 +122,15 @@ void LayerMetadata::setMetadata(const OGRLayer *layer) {
 	// layername_ and layernamelength_
 	const char *layername = layer->GetName();
 	layernamelength_ = strlen(layername) + 1;
-	layername_ = (char *) malloc(layernamelength_);
+	if (layername_ == NULL) {
+		layername_ = (char *) malloc(layernamelength_);
+	} else {
+		layername_ = (char *) realloc(layername_, layernamelength_);
+	}
+	if (layername_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for layername_.\n");
+		return;
+	}
 	memcpy(layername_, layername, layernamelength_);
 	metadatalength_ += sizeof(layernamelength_) + layernamelength_;
 
@@ -126,6 +139,7 @@ void LayerMetadata::setMetadata(const OGRLayer *layer) {
 	metadatalength_ += sizeof(geotype_);
 
 	// strWKT_ and strWKTlength_
+	if(strWKT_) free(strWKT_);
 	strWKT_ = NULL;
 	OGRSpatialReference *poSR = layer->GetSpatialRef();
 	if (poSR) {
@@ -153,7 +167,15 @@ void LayerMetadata::setMetadata(const char * bytes) {
 	// layername_ and layernamelength_
 	memcpy(&layernamelength_, bytes + offset, sizeof(layernamelength_));
 	offset += sizeof(layernamelength_);
-	layername_ = (char *) malloc(layernamelength_);
+	if (layername_ == NULL) {
+		layername_ = (char *) malloc(layernamelength_);
+	} else {
+		layername_ = (char *) realloc(layername_, layernamelength_);
+	}
+	if (layername_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for layername_.\n");
+		return;
+	}
 	memcpy(layername_, bytes + offset, layernamelength_);
 	offset += layernamelength_;
 
@@ -164,7 +186,15 @@ void LayerMetadata::setMetadata(const char * bytes) {
 	// strWKT georeference
 	memcpy(&strWKTlength_, bytes + offset, sizeof(strWKTlength_));
 	offset += sizeof(strWKTlength_);
-	strWKT_ = malloc(sizeof(char) * strWKTlength_);
+	if (strWKT_ == NULL) {
+		strWKT_ = (char *) malloc(strWKTlength_);
+	} else {
+		strWKT_ = (char *) realloc(strWKT_, strWKTlength_);
+	}
+	if (strWKT_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for strWKT_.\n");
+		return;
+	}
 	memcpy(strWKT_, bytes + offset, strWKTlength_);
 	offset += strWKTlength_;
 
@@ -185,4 +215,42 @@ void LayerMetadata::setMetadata(const char * bytes) {
 
 	// set buffer flag.
 	bufferflag_ = LATEST;
+}
+
+void LayerMetadata::setMetadata(const LayerMetadata &metadata) {
+	// metadatalength_
+	metadatalength_ = metadata.getMetadataLength();
+
+	// layername_
+	layernamelength_ = metadata.getLayernameLength();
+	if (layername_ == NULL) {
+		layername_ = (char *) malloc(layernamelength_);
+	} else {
+		layername_ = (char *) realloc(layername_, layernamelength_);
+	}
+	if (layername_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for layername_.\n");
+		return;
+	}
+	memcpy(layername_, metadata.getLayername(), layernamelength_);
+
+	// geotype_
+	geotype_ = metadata.getGeotype();
+
+	// strWKT_
+	strWKTlength_ = metadata.getStrWKTlength();
+	if (strWKT_ == NULL) {
+		strWKT_ = (char *) malloc(strWKTlength_);
+	} else {
+		strWKT_ = (char *) realloc(strWKT_, strWKTlength_);
+	}
+	if (strWKT_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for strWKT_.\n");
+		return;
+	}
+	memcpy(strWKT_, metadata.getStrWKT(), strWKTlength_);
+
+	// set buffer flag.
+	if (bufferflag_ == LATEST)
+		bufferflag_ = STALE;
 }
