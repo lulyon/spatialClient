@@ -26,15 +26,16 @@ public:
 	bool put(const char *key, const char *value) const;
 	bool put(const char *key, const char *value, int size) const; //size means value size.
 
-	void putLayer(const OGRLayer *layer) const;
+	void putLayer(const char *key, const OGRLayer *layer) const;
 	OGRLayer *getLayer(const char *key) const;
 
-	void putMetadata(OGRLayer *layer) const;
-	void putMetadata(LayerMetadata *metadata) const;
+	void putMetadata(const char *key, const OGRLayer *layer) const;
+	void putMetadata(const char *key, LayerMetadata *metadata) const;
 	LayerMetadata * getMetadata(const char *key) const;
 
-	void putAttributeDef();
-	void getAttributeDef();
+	void putAttributeDef(const char *key, const OGRLayer *layer) const;
+	void putAttributeDef(const char *key, LayerAttrDef * attrdef) const;
+	LayerAttrDef * getAttributeDef(const char *key) const;
 
 	void getFeatureCount();
 	void putFeature();
