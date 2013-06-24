@@ -9,11 +9,11 @@
 
 class OGRLayer;
 
-class LayerMetadata
-{
+class LayerMetadata {
 public:
 
 	LayerMetadata();
+	LayerMetadata(const LayerMetadata & metadata);
 	LayerMetadata(const OGRLayer *layer);
 	LayerMetadata(const char * bytes);
 	~LayerMetadata();
@@ -32,9 +32,14 @@ public:
 
 	void setMetadata(const OGRLayer *layer);
 	void setMetadata(const char * bytes);
+	void setMetadata(const LayerMetadata &metadata);
 
 private:
-	typedef enum {UNINITIALIZED, STALE, LATEST} BufferFlagType;
+	typedef enum {
+		UNINITIALIZED, STALE, LATEST
+	} BufferFlagType;
+
+	void operator=(const LayerMetadata &);
 
 	int metadatalength_;
 	int layernamelength_;
@@ -46,6 +51,5 @@ private:
 	char *buffer_;
 	BufferFlagType bufferflag_;
 };
-
 
 #endif /* LAYERMETADATA_H_ */
