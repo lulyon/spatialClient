@@ -108,7 +108,10 @@ void SpatialClient::putLayer(const OGRLayer *layer) const {
 		return;
 	char *bytes = serialize(layer);
 	const char *layername = layer->GetName();
-	assert(bytes != NULL);
+	if (bytes == NULL) {
+		fprintf(stderr, "Nil OGRLayer bytes.\n");
+		return;
+	}
 	int length = 0;
 	memcpy(&length, bytes, sizeof(length));
 	put(layername, bytes, length);
@@ -160,7 +163,7 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 		OGRFieldDefn* poField = poLayer->GetLayerDefn()->GetFieldDefn(ipoField);
 		const char *sztitle = poField->GetNameRef();
 		int sztitlelength = strlen(sztitle) + 1;
-		attributedeflength += sztitlelength + sztitlelength;
+		attributedeflength += sztitlelength + sizeof(sztitlelength);
 
 		int nWidth = poField->GetWidth();
 		attributedeflength += sizeof(nWidth);
@@ -222,7 +225,12 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 	length += sizeof(length);
 
 	// alloc memory for serialization.
-	char *bytes = malloc((length + 10) * sizeof(char));
+	char *bytes = (char *) malloc((length + 10));
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to alloc memory for bytes.\n");
+		return NULL;
+	}
+
 	assert(bytes != NULL);
 
 	int offset = 0;
@@ -392,7 +400,11 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	memcpy(&layernamelength, bytes + offset, sizeof(layernamelength));
 	offset += sizeof(layernamelength);
 
-	char *layername = (char *) malloc(sizeof(char) * layernamelength);
+	char *layername = (char *) malloc(layernamelength);
+	if (layername == NULL) {
+		fprintf(stderr, "Fail to alloc memory for layername.\n");
+		return NULL;
+	}
 	memcpy(layername, bytes + offset, layernamelength);
 	offset += layernamelength;
 
@@ -405,7 +417,11 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	int strWKTlength = 0;
 	memcpy(&strWKTlength, bytes + offset, sizeof(strWKTlength));
 	offset += sizeof(strWKTlength);
-	char *strWKT = malloc(sizeof(char) * strWKTlength);
+	char *strWKT = malloc(strWKTlength);
+	if (strWKT == NULL) {
+		fprintf(stderr, "Fail to alloc memory for strWKT.\n");
+		return NULL;
+	}
 	memcpy(strWKT, bytes + offset, strWKTlength);
 	offset += strWKTlength;
 
@@ -424,6 +440,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 
 	assert(poLayer);
 	CSLDestroy(papszOptions);
+	free(layername);
 
 	//serialize attribute definition data
 	// attributedeflength
@@ -441,7 +458,11 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 		int sztitlelength = 0;
 		memcpy(&sztitlelength, bytes + offset, sizeof(sztitlelength));
 		offset += sizeof(sztitlelength);
-		char *sztitle = (char *) malloc(sizeof(char) * sztitlelength);
+		char *sztitle = (char *) malloc(sztitlelength);
+		if (sztitle == NULL) {
+			fprintf(stderr, "Fail to alloc memory for sztitle.\n");
+			return NULL;
+		}
 		memcpy(sztitle, bytes + offset, sztitlelength);
 		offset += sztitlelength;
 
@@ -465,6 +486,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 		oField.SetPrecision(nDecimals);
 
 		poLayer->CreateField(&oField);
+		free(sztitle);
 	}
 
 	// deserialize feature size and attribute record.
@@ -552,7 +574,11 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 					int strlength;
 					memcpy(&strlength, bytes + offset2, sizeof(strlength));
 					offset2 += sizeof(strlength);
-					char *pstr = (char *) malloc(sizeof(char) * strlength);
+					char *pstr = (char *) malloc(strlength);
+					if (pstr == NULL) {
+						fprintf(stderr, "Fail to alloc memory for pstr.\n");
+						return NULL;
+					}
 					memcpy(pstr, bytes + offset2, strlength);
 					offset2 += strlength;
 
@@ -563,7 +589,12 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 					memcpy(&bvaluelength, bytes + offset2,
 							sizeof(bvaluelength));
 					offset2 += sizeof(bvaluelength);
-					char *bvalue = (char *) malloc(sizeof(char) * bvaluelength);
+					char *bvalue = (char *) malloc(bvaluelength);
+					if (bvalue == NULL) {
+						fprintf(stderr, "Fail to alloc memory for bvalue.\n");
+						return NULL;
+					}
+
 					memcpy(bvalue, bytes + offset2, bvaluelength);
 					offset2 += bvaluelength;
 
