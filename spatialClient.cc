@@ -103,24 +103,35 @@ bool SpatialClient::put(const char *key, const char *value, int size) const {
 	return true;
 }
 
-void SpatialClient::putLayer(const OGRLayer *layer) const {
-	if (layer == NULL)
+void SpatialClient::putLayer(const char *key, const OGRLayer *layer) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
 		return;
+	}
+	if (layer == NULL) {
+		fprintf(stderr, "Empty OGRLayer.\n");
+		return;
+	}
 	char *bytes = serialize(layer);
-	const char *layername = layer->GetName();
 	if (bytes == NULL) {
 		fprintf(stderr, "Nil OGRLayer bytes.\n");
 		return;
 	}
 	int length = 0;
 	memcpy(&length, bytes, sizeof(length));
-	put(layername, bytes, length);
+	put(key, bytes, length);
 }
 
 OGRLayer *SpatialClient::getLayer(const char *key) const {
-	char *bytes = get(key);
-	if (bytes == NULL)
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
 		return NULL;
+	}
+	char *bytes = get(key);
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the layer bytes.\n");
+		return NULL;
+	}
 	OGRLayer *layer = deserialize(bytes);
 	return layer;
 }
@@ -637,12 +648,18 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	return poLayer;
 }
 
-void SpatialClient::putMetadata(OGRLayer *layer) const {
+void SpatialClient::putMetadata(const char *key, const OGRLayer *layer) const {
 	LayerMetadata metadata(layer);
-	putMetadata(&metadata);
+	putMetadata(key, &metadata);
 }
 
-void SpatialClient::putMetadata(LayerMetadata *metadata) const {
+void SpatialClient::putMetadata(const char *key,
+		LayerMetadata *metadata) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return;
+	}
+
 	if (metadata == NULL) {
 		fprintf(stderr, "Nil LayerMetadata object.\n");
 		return;
@@ -650,42 +667,67 @@ void SpatialClient::putMetadata(LayerMetadata *metadata) const {
 
 	const char *bytes = metadata->getBytes();
 	if (bytes == NULL) {
-		fprintf(stderr, "Invalid LayerMetadata object.\n");
+		fprintf(stderr, "Fail to get the metadata bytes.\n");
 		return;
 	}
 	int metadatalength = metadata->getMetadataLength();
-	int layernamelength = metadata->getLayernameLength();
-	const char *layername = metadata->getLayername();
-	const char *prekey = "metadata_";
-	char *key = (char *) malloc(strlen(prekey) + layernamelength + 10);
-	if (key == NULL) {
-		fprintf(stderr, "Fail to alloc memory for metadata key.\n");
-		return;
-	}
-	strcpy(key, prekey);
-	strcat(key, layername);
+
 	put(key, bytes, metadatalength);
-	free(key);
 }
 
 LayerMetadata * SpatialClient::getMetadata(const char *key) const {
 	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
 		return NULL;
 	}
-	const char *prekey = "metadata_";
-	char *longkey = (char *) malloc(strlen(prekey) + strlen(key) + 10);
-	if (longkey == NULL) {
-		fprintf(stderr, "Fail to alloc memory for metadata key.\n");
-		return NULL;
-	}
-	strcpy(longkey, prekey);
-	strcat(longkey, key);
-
 	char *bytes = get(key);
-	free(longkey);
+
 	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the metadata bytes.\n");
 		return NULL;
 	}
 	LayerMetadata *metadata = new LayerMetadata(bytes);
 	return metadata;
+}
+
+void SpatialClient::putAttributeDef(const char *key,
+		const OGRLayer *layer) const {
+	LayerAttrDef attrdef(layer);
+	putAttributeDef(key, &attrdef);
+}
+void SpatialClient::putAttributeDef(const char *key,
+		LayerAttrDef * attrdef) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return;
+	}
+
+	if (attrdef == NULL) {
+		fprintf(stderr, "Nil LayerAttrDef object.\n");
+		return;
+	}
+
+	const char *bytes = attrdef->getBytes();
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the attribute definition bytes.\n");
+		return;
+	}
+	int attrdeflength = attrdef->getAttrDefLength();
+
+	put(key, bytes, attrdeflength);
+
+}
+LayerAttrDef * SpatialClient::getAttributeDef(const char *key) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return NULL;
+	}
+	char *bytes = get(key);
+
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the attribute definition bytes.\n");
+		return NULL;
+	}
+	LayerAttrDef *attrdef = new LayerAttrDef(bytes);
+	return attrdef;
 }
