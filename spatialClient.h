@@ -33,16 +33,19 @@ public:
 	void putMetadata(LayerMetadata *metadata) const;
 	LayerMetadata * getMetadata(const char *key) const;
 
+	void putAttributeDef();
+	void getAttributeDef();
+
 	void getFeatureCount();
 	void putFeature();
 	void getFeature();
-	void putAttributeDef();
-	void getAttributeDef();
 
 	void getAttributeCount();
 	void putAttributeRecord();
 	void getAttributeRecord();
 private:
+	SpatialClient(const SpatialClient &);
+	void operator=(const SpatialClient &);
 	char *serialize(const OGRLayer *poLayer) const;
 	OGRLayer *deserialize(const char *bytes) const;
 	redisContext *con_;
