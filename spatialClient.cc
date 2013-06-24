@@ -188,16 +188,23 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 	length += attributedeflength + sizeof(attributedeflength);
 
 	// compute feature size and attribute record size.
-	int featurecount = poLayer->GetFeatureCount();
+	int featurecount = 0;
 	featurelength += sizeof(featurecount);
 
+	int attributerecordcount = 0;
+	attributerecordlength += sizeof(attributerecordcount);
 	attributerecordlength += sizeof(fieldcount);
 	poLayer->ResetReading();
 	for (OGRFeature *feature = poLayer->GetNextFeature(); feature != NULL;
 			feature = poLayer->GetNextFeature()) {
 		OGRGeometry *geometry = feature->GetGeometryRef();
 		if (geometry) {
+			// int geometrytype = (int)geometry->getGeometryType();
+			featurelength += sizeof(int);
 			featurelength += geometry->WkbSize();
+
+			++featurecount;
+			++attributerecordcount;
 
 			for (int ifield = 0; ifield < fieldcount; ++ifield) {
 				OGRFieldDefn* poField = poLayer->GetLayerDefn()->GetFieldDefn(
@@ -224,7 +231,6 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					attributerecordlength += 7 * sizeof(int); //int year, mon, day, hour, min, sec, tag;
 					break;
 				default:
-					attributerecordlength -= sizeof(attributetype);
 					continue;
 				}
 			}
@@ -303,6 +309,14 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 	offset += sizeof(featurecount);
 
 	int offset2 = offset + featurelength;
+	memcpy(bytes + offset2, &attributerecordlength,
+			sizeof(attributerecordlength));
+	offset2 += sizeof(attributerecordlength);
+
+	memcpy(bytes + offset2, &attributerecordcount,
+			sizeof(attributerecordlength));
+	offset2 += sizeof(attributerecordcount);
+
 	memcpy(bytes + offset2, &fieldcount, sizeof(fieldcount));
 	offset2 += sizeof(fieldcount);
 
@@ -311,6 +325,10 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 			feature = poLayer->GetNextFeature()) {
 		OGRGeometry *geometry = feature->GetGeometryRef();
 		if (geometry) {
+			int geometrytype = (int) geometry->getGeometryType();
+			memcpy(bytes + offset, &geometrytype, sizeof(geometrytype));
+			offset += sizeof(geometrytype);
+
 			geometry->exportToWkb((OGRwkbByteOrder) wkbNDR,
 					(unsigned char *) (bytes + offset));
 			offset += geometry->WkbSize();
@@ -372,7 +390,6 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					offset2 += sizeof(tag);
 					break;
 				default:
-					offset2 -= sizeof(attributetype);
 					continue;
 				}
 			}
@@ -512,13 +529,26 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	offset += sizeof(featurecount);
 
 	int offset2 = offset + featurelength;
+	int attributerecordlength = 0;
+	memcpy(&attributerecordlength, bytes + offset2,
+			sizeof(attributerecordlength));
+	offset2 += sizeof(attributerecordlength);
+
+	int attributerecordcount = 0;
+	memcpy(&attributerecordcount, bytes + offset2,
+			sizeof(attributerecordcount));
+	offset2 += sizeof(attributerecordcount);
+
 	int recordfieldcount = 0;
 	memcpy(&recordfieldcount, bytes + offset2, sizeof(recordfieldcount));
 	offset2 += sizeof(recordfieldcount);
 
 	OGRFeatureDefn *defn = poLayer->GetLayerDefn();
 	for (int iFeature = 0; iFeature < featurecount; iFeature++) {
-		OGRwkbGeometryType geometrytype = (OGRwkbGeometryType) geotype;
+		int geointtype = 0;
+		memcpy(&geointtype, bytes + offset, sizeof(geointtype));
+		offset += sizeof(geointtype);
+		OGRwkbGeometryType geometrytype = (OGRwkbGeometryType) geointtype;
 		OGRGeometry *geometry = NULL;
 		switch (geometrytype) {
 		case wkbPoint:
