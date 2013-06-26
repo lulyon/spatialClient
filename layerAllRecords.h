@@ -43,7 +43,7 @@ class LayerAllRecords {
 public:
 	LayerAllRecords();
 	LayerAllRecords(const LayerAllRecords & allrecords);
-	LayerAllRecords(const OGRLayer *layer);
+	LayerAllRecords(OGRLayer *layer);
 	LayerAllRecords(const char * bytes);
 	~LayerAllRecords();
 
@@ -56,7 +56,7 @@ public:
 	const LayerRecordField *getRecord(int index) const;
 	const LayerRecordField *getRecordField(int rindex, int findex) const;
 
-	void setAllRecords(const OGRLayer *layer);
+	void setAllRecords(OGRLayer *layer);
 	void setAllRecords(const char * bytes);
 	void setAllRecords(const LayerAllRecords & allrecords);
 
