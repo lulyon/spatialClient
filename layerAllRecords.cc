@@ -13,23 +13,23 @@
 #include <ogrsf_frmts.h>
 
 LayerAllRecords::LayerAllRecords() :
-		recordlength_(0), recordcount_(0), fieldcount_(NULL), fields_(NULL), buffer_(
+		recordlength_(0), recordcount_(0), fieldcount_(0), fields_(NULL), buffer_(
 				NULL), bufferflag_(UNINITIALIZED) {
 }
 
 LayerAllRecords::LayerAllRecords(const LayerAllRecords & allrecords) :
-		recordlength_(0), recordcount_(0), fieldcount_(NULL), fields_(NULL), buffer_(
+		recordlength_(0), recordcount_(0), fieldcount_(0), fields_(NULL), buffer_(
 				NULL), bufferflag_(UNINITIALIZED) {
 	setAllRecords(allrecords);
 }
-LayerAllRecords::LayerAllRecords(const OGRLayer *layer) :
-		recordlength_(0), recordcount_(0), fieldcount_(NULL), fields_(NULL), buffer_(
+LayerAllRecords::LayerAllRecords(OGRLayer *layer) :
+		recordlength_(0), recordcount_(0), fieldcount_(0), fields_(NULL), buffer_(
 				NULL), bufferflag_(UNINITIALIZED) {
 	setAllRecords(layer);
 }
 
 LayerAllRecords::LayerAllRecords(const char * bytes) :
-		recordlength_(0), recordcount_(0), fieldcount_(NULL), fields_(NULL), buffer_(
+		recordlength_(0), recordcount_(0), fieldcount_(0), fields_(NULL), buffer_(
 				NULL), bufferflag_(UNINITIALIZED) {
 	setAllRecords(bytes);
 }
@@ -44,14 +44,12 @@ LayerAllRecords::~LayerAllRecords() {
 			case FTReal:
 				break;
 			case FTString:
-				char *str = fields_[index].field_.svalue_.str_;
-				if (str)
-					free(str);
+				if (fields_[index].field_.svalue_.str_)
+					free(fields_[index].field_.svalue_.str_);
 				break;
 			case FTBinary:
-				char *bytes = fields_[index].field_.bvalue_.bytes_;
-				if (bytes)
-					free(bytes);
+				if (fields_[index].field_.bvalue_.bytes_)
+					free(fields_[index].field_.bvalue_.bytes_);
 				break;
 			case FTDate:
 				break;
@@ -67,7 +65,7 @@ LayerAllRecords::~LayerAllRecords() {
 		free(buffer_);
 }
 
-void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
+void LayerAllRecords::setAllRecords(OGRLayer *layer) {
 	if (layer == NULL)
 		return;
 	recordlength_ = 0;
@@ -82,15 +80,17 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 				break;
 			case FTReal:
 				break;
-			case FTString:
+			case FTString: {
 				char *str = fields_[index].field_.svalue_.str_;
 				if (str)
 					free(str);
+			}
 				break;
-			case FTBinary:
+			case FTBinary: {
 				char *bytes = fields_[index].field_.bvalue_.bytes_;
 				if (bytes)
 					free(bytes);
+			}
 				break;
 			case FTDate:
 				break;
@@ -125,17 +125,21 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 				case FTReal:
 					recordlength_ += sizeof(double);
 					break;
-				case FTString:
+				case FTString: {
 					const char *pstr = feature->GetFieldAsString(ifield);
 					int strlength = strlen(pstr) + 1;
 					recordlength_ += sizeof(strlength) + strlength;
 					break;
-				case FTBinary:
+				}
+
+				case FTBinary: {
 					int blobsize;
 					feature->GetFieldAsBinary(ifield, &blobsize);
 					int byteslength = blobsize;
 					recordlength_ += sizeof(byteslength) + byteslength;
 					break;
+				}
+
 				case FTDate:
 					recordlength_ += 7 * sizeof(int);
 					break;
@@ -175,14 +179,14 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 
 				switch (fieldtype) {
 				case FTInteger:
-					int ivalue = feature->GetFieldAsInteger(ifield);
-					fields_[index].field_.ivalue_ = ivalue;
+					fields_[index].field_.ivalue_ = feature->GetFieldAsInteger(
+							ifield);
 					break;
 				case FTReal:
-					double dvalue = feature->GetFieldAsDouble(ifield);
-					fields_[index].field_.dvalue_ = dvalue;
+					fields_[index].field_.dvalue_ = feature->GetFieldAsDouble(
+							ifield);
 					break;
-				case FTString:
+				case FTString: {
 					const char *pstr = feature->GetFieldAsString(ifield);
 					int strlength = strlen(pstr) + 1;
 					fields_[index].field_.svalue_.strlength_ = strlength;
@@ -196,7 +200,8 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 					}
 					memcpy(fields_[index].field_.svalue_.str_, pstr, strlength);
 					break;
-				case FTBinary:
+				}
+				case FTBinary: {
 					int blobsize;
 					unsigned char * bvalue = feature->GetFieldAsBinary(ifield,
 							&blobsize);
@@ -212,6 +217,7 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 					memcpy(fields_[index].field_.bvalue_.bytes_, bvalue,
 							blobsize);
 					break;
+				}
 				case FTDate:
 					int year, mon, day, hour, min, sec, tag;
 					feature->GetFieldAsDateTime(ifield, &year, &mon, &day,
@@ -257,16 +263,18 @@ void LayerAllRecords::setAllRecords(const char * bytes) {
 				break;
 			case FTReal:
 				break;
-			case FTString:
+			case FTString: {
 				char *str = fields_[index].field_.svalue_.str_;
 				if (str)
 					free(str);
 				break;
-			case FTBinary:
+			}
+			case FTBinary: {
 				char *bytes = fields_[index].field_.bvalue_.bytes_;
 				if (bytes)
 					free(bytes);
 				break;
+			}
 			case FTDate:
 				break;
 			default:
@@ -303,19 +311,21 @@ void LayerAllRecords::setAllRecords(const char * bytes) {
 			offset += sizeof(fieldtype);
 			fields_[index].fieldtype_ = fieldtype;
 			switch (fieldtype) {
-			case FTInteger:
+			case FTInteger: {
 				int ivalue = 0;
 				memcpy(&ivalue, bytes + offset, sizeof(ivalue));
 				offset += sizeof(ivalue);
 				fields_[index].field_.ivalue_ = ivalue;
 				break;
-			case FTReal:
+			}
+			case FTReal: {
 				double dvalue = 0;
 				memcpy(&dvalue, bytes + offset, sizeof(dvalue));
 				offset += sizeof(dvalue);
 				fields_[index].field_.dvalue_ = dvalue;
 				break;
-			case FTString:
+			}
+			case FTString: {
 				int strlength = 0;
 				memcpy(&strlength, bytes + offset, sizeof(strlength));
 				offset += sizeof(strlength);
@@ -330,7 +340,8 @@ void LayerAllRecords::setAllRecords(const char * bytes) {
 						strlength);
 				offset += strlength;
 				break;
-			case FTBinary:
+			}
+			case FTBinary: {
 				int blobsize = 0;
 				memcpy(&blobsize, bytes + offset, sizeof(blobsize));
 				offset += sizeof(blobsize);
@@ -347,7 +358,8 @@ void LayerAllRecords::setAllRecords(const char * bytes) {
 						blobsize);
 				offset += blobsize;
 				break;
-			case FTDate:
+			}
+			case FTDate: {
 				int year, mon, day, hour, min, sec, tag;
 				memcpy(&year, bytes + offset, sizeof(year));
 				offset += sizeof(year);
@@ -372,6 +384,7 @@ void LayerAllRecords::setAllRecords(const char * bytes) {
 				fields_[index].field_.tvalue_.sec_ = sec;
 				fields_[index].field_.tvalue_.tag_ = tag;
 				break;
+			}
 			default:
 				break;
 			}
@@ -410,16 +423,18 @@ void LayerAllRecords::setAllRecords(const LayerAllRecords & allrecords) {
 				break;
 			case FTReal:
 				break;
-			case FTString:
+			case FTString: {
 				char *str = fields_[index].field_.svalue_.str_;
 				if (str)
 					free(str);
 				break;
-			case FTBinary:
+			}
+			case FTBinary: {
 				char *bytes = fields_[index].field_.bvalue_.bytes_;
 				if (bytes)
 					free(bytes);
 				break;
+			}
 			case FTDate:
 				break;
 			default:
@@ -449,7 +464,7 @@ void LayerAllRecords::setAllRecords(const LayerAllRecords & allrecords) {
 	for (int i = 0; i < recordcount_; ++i) {
 		for (int j = 0; j < fieldcount_; ++j) {
 			int index = i * fieldcount_ + j;
-			LayerRecordField *field = allrecords.getRecordField(i, j);
+			const LayerRecordField *field = allrecords.getRecordField(i, j);
 			char fieldtype = field->fieldtype_;
 			fields_[index].fieldtype_ = fieldtype;
 			switch (fieldtype) {
@@ -459,7 +474,7 @@ void LayerAllRecords::setAllRecords(const LayerAllRecords & allrecords) {
 			case FTReal:
 				fields_[index].field_.dvalue_ = field->field_.dvalue_;
 				break;
-			case FTString:
+			case FTString: {
 				int strlength = field->field_.svalue_.strlength_;
 				fields_[index].field_.svalue_.strlength_ = strlength;
 				fields_[index].field_.svalue_.str_ = (char *) malloc(strlength);
@@ -468,10 +483,11 @@ void LayerAllRecords::setAllRecords(const LayerAllRecords & allrecords) {
 							"Fail to alloc memory for record field string.\n");
 					return;
 				}
-				memcpy(fields_[index].field_.svalue_.str_, field->field_.svalue_.str_,
-						strlength);
+				memcpy(fields_[index].field_.svalue_.str_,
+						field->field_.svalue_.str_, strlength);
 				break;
-			case FTBinary:
+			}
+			case FTBinary: {
 				int blobsize = field->field_.bvalue_.byteslength_;
 				fields_[index].field_.bvalue_.byteslength_ = blobsize;
 				fields_[index].field_.bvalue_.bytes_ = (char *) malloc(
@@ -482,18 +498,22 @@ void LayerAllRecords::setAllRecords(const LayerAllRecords & allrecords) {
 							"Fail to alloc memory for record field bytes array.\n");
 					return;
 				}
-				memcpy(fields_[index].field_.bvalue_.bytes_, field->field_.bvalue_.bytes_,
-						blobsize);
+				memcpy(fields_[index].field_.bvalue_.bytes_,
+						field->field_.bvalue_.bytes_, blobsize);
 				break;
-			case FTDate:
-				fields_[index].field_.tvalue_.year_ = field->field_.tvalue_.year_;
+			}
+			case FTDate: {
+				fields_[index].field_.tvalue_.year_ =
+						field->field_.tvalue_.year_;
 				fields_[index].field_.tvalue_.mon_ = field->field_.tvalue_.mon_;
 				fields_[index].field_.tvalue_.day_ = field->field_.tvalue_.day_;
-				fields_[index].field_.tvalue_.hour_ = field->field_.tvalue_.hour_;
+				fields_[index].field_.tvalue_.hour_ =
+						field->field_.tvalue_.hour_;
 				fields_[index].field_.tvalue_.min_ = field->field_.tvalue_.min_;
 				fields_[index].field_.tvalue_.sec_ = field->field_.tvalue_.sec_;
 				fields_[index].field_.tvalue_.tag_ = field->field_.tvalue_.tag_;
 				break;
+			}
 			default:
 				break;
 			}
@@ -534,31 +554,35 @@ const char *LayerAllRecords::getBytes() {
 			memcpy(bytes + offset, &fieldtype, sizeof(fieldtype));
 			offset += sizeof(fieldtype);
 			switch (fieldtype) {
-			case FTInteger:
+			case FTInteger: {
 				int ivalue = fields_[index].field_.ivalue_;
 				memcpy(bytes + offset, &ivalue, sizeof(ivalue));
 				offset += sizeof(ivalue);
 				break;
-			case FTReal:
+			}
+			case FTReal: {
 				double dvalue = fields_[index].field_.dvalue_;
 				memcpy(bytes + offset, &dvalue, sizeof(dvalue));
 				offset += sizeof(dvalue);
 				break;
-			case FTString:
+			}
+			case FTString: {
 				int strlength = fields_[index].field_.svalue_.strlength_;
 				memcpy(bytes + offset, &strlength, sizeof(strlength));
 				offset += sizeof(strlength);
 				char *str = fields_[index].field_.svalue_.str_;
 				memcpy(bytes + offset, str, strlength);
 				break;
-			case FTBinary:
+			}
+			case FTBinary: {
 				int byteslength = fields_[index].field_.bvalue_.byteslength_;
 				memcpy(bytes + offset, &byteslength, sizeof(byteslength));
 				offset += sizeof(byteslength);
 				char *str = fields_[index].field_.bvalue_.bytes_;
 				memcpy(bytes + offset, str, byteslength);
 				break;
-			case FTDate:
+			}
+			case FTDate: {
 				FieldDateType & time = fields_[index].field_.tvalue_;
 				memcpy(bytes + offset, &time.year_, sizeof(time.year_));
 				offset += sizeof(time.year_);
@@ -575,6 +599,7 @@ const char *LayerAllRecords::getBytes() {
 				memcpy(bytes + offset, &time.tag_, sizeof(time.tag_));
 				offset += sizeof(time.tag_);
 				break;
+			}
 			default:
 				break;
 			}
