@@ -1,9 +1,8 @@
-/*
- * layerAttrDef.h
- *
- *  Created on: 2013-6-21
- *      Author: luliang
- */
+/// @file layerAttrDef.h
+/// @author luliang@ict.ac.cn
+/// @copybrief Copyright 2012 ICT, CAS. All rights reserved.
+/// @version 0.6
+/// @date 2013-06-21
 
 #ifndef LAYERATTRDEF_H_
 #define LAYERATTRDEF_H_
@@ -11,7 +10,7 @@
 class OGRLayer;
 
 typedef struct {
-  int sztitlelength_;
+	int sztitlelength_;
 	char *sztitle_;
 
 	int nWidth_;
