@@ -14,7 +14,7 @@ public:
 
 	LayerMetadata();
 	LayerMetadata(const LayerMetadata & metadata);
-	LayerMetadata(const OGRLayer *layer);
+	LayerMetadata(OGRLayer *layer);
 	LayerMetadata(const char * bytes);
 	~LayerMetadata();
 
@@ -30,7 +30,7 @@ public:
 	int getStrWKTlength() const;
 	const char *getStrWKT() const;
 
-	void setMetadata(const OGRLayer *layer);
+	void setMetadata(OGRLayer *layer);
 	void setMetadata(const char * bytes);
 	void setMetadata(const LayerMetadata &metadata);
 
