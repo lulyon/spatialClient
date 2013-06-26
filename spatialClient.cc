@@ -815,3 +815,46 @@ LayerAllFeatures * SpatialClient::getAllFeatures(const char *key) const {
 	LayerAllFeatures *features = new LayerAllFeatures(bytes);
 	return features;
 }
+
+void SpatialClient::putAllRecords(const char *key,
+		const OGRLayer *layer) const {
+	LayerAllRecords records(layer);
+	putAllRecords(key, &records);
+}
+
+void SpatialClient::putAllRecords(const char *key,
+		LayerAllRecords * allrecords) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return;
+	}
+
+	if (allrecords == NULL) {
+		fprintf(stderr, "Nil AllRecords object.\n");
+		return;
+	}
+
+	const char *bytes = allrecords->getBytes();
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the attribute definition bytes.\n");
+		return;
+	}
+	int recordlength = allrecords->getRecordLength();
+
+	put(key, bytes, recordlength);
+}
+
+LayerAllRecords * SpatialClient::getAllRecords(const char *key) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return NULL;
+	}
+	char *bytes = get(key);
+
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the layer features bytes.\n");
+		return NULL;
+	}
+	LayerAllRecords *records = new LayerAllRecords(bytes);
+	return records;
+}
