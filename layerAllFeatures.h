@@ -7,8 +7,10 @@
 #ifndef LAYERALLFEATURES_H_
 #define LAYERALLFEATURES_H_
 
+class OGRLayer;
+
 typedef struct {
-  int geometrytype_;
+	int geometrytype_;
 	int wkbsize_;
 	char *wkbbytes_;
 } LayerFeature;
@@ -19,7 +21,7 @@ public:
 	LayerAllFeatures(const LayerAllFeatures & allfeatures);
 	LayerAllFeatures(const OGRLayer *layer);
 	LayerAllFeatures(const char * bytes);
-	~LayerAttrDef();
+	~LayerAllFeatures();
 
 	const char *getBytes();
 
@@ -37,7 +39,7 @@ private:
 		UNINITIALIZED, STALE, LATEST
 	} BufferFlagType;
 
-	void operator=(const LayerAttrDef &);
+	void operator=(const LayerAllRecords &);
 
 	int featurelength_;
 	int featurecount_;
