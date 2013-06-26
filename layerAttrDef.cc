@@ -1,9 +1,9 @@
-/*
- * layerAttrDef.cc
- *
- *  Created on: 2013-6-21
- *      Author: luliang
- */
+/// @file layerAttrDef.cc
+/// @author luliang@ict.ac.cn
+/// @copybrief Copyright 2012 ICT, CAS. All rights reserved.
+/// @version 0.6
+/// @date 2013-06-21
+
 #include "layerAttrDef.h"
 
 #include <stdio.h>
@@ -13,7 +13,7 @@
 #include <ogrsf_frmts.h>
 
 LayerAttrDef::LayerAttrDef() :
-  	attrdeflength_(0), fieldcount_(0), fields_(NULL), buffer_(NULL), bufferflag_(
+		attrdeflength_(0), fieldcount_(0), fields_(NULL), buffer_(NULL), bufferflag_(
 				UNINITIALIZED) {
 }
 
@@ -135,7 +135,6 @@ void LayerAttrDef::setAttrDef(const char * bytes) {
 		fprintf(stderr, "Fail to alloc memory for fields.\n");
 		return;
 	}
-	memset(fields_, 0, sizeof(LayerAttrDefField) * fieldcount_);
 
 	for (int ipoField = 0; ipoField < fieldcount_; ipoField++) {
 		// sztitle
@@ -293,9 +292,11 @@ int LayerAttrDef::getAttrDefLength() const {
 int LayerAttrDef::getFieldCount() const {
 	return fieldcount_;
 }
+
 const LayerAttrDefField *LayerAttrDef::getFields() const {
 	return fields_;
 }
+
 const LayerAttrDefField *LayerAttrDef::getField(int index) const {
 	if (fields_ == NULL || index < 0 || index >= fieldcount_)
 		return NULL;
