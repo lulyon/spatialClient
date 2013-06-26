@@ -164,7 +164,6 @@ void LayerAttrDef::setAttrDef(const char * bytes) {
 		offset += sizeof(fields_[ipoField].nDecimals_);
 
 		// fieldtype
-		char fieldtype = 0;
 		memcpy(&fields_[ipoField].fieldtype_, bytes + offset,
 				sizeof(fields_[ipoField].fieldtype_));
 		offset += sizeof(fields_[ipoField].fieldtype_);
@@ -273,7 +272,6 @@ const char *LayerAttrDef::getBytes() {
 		offset += sizeof(fields_[ipoField].nDecimals_);
 
 		// fieldtype
-		char fieldtype = 0;
 		memcpy(bytes + offset, &fields_[ipoField].fieldtype_,
 				sizeof(fields_[ipoField].fieldtype_));
 		offset += sizeof(fields_[ipoField].fieldtype_);
