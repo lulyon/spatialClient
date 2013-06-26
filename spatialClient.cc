@@ -201,7 +201,8 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 		if (geometry) {
 			// int geometrytype = (int)geometry->getGeometryType();
 			featurelength += sizeof(int);
-			featurelength += geometry->WkbSize();
+			int wkbsize = geometry->WkbSize();
+			featurelength += sizeof(wkbsize) + wkbsize;
 
 			++featurecount;
 			++attributerecordcount;
@@ -220,12 +221,14 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					break;
 				case OFTString:
 					const char *pstr = feature->GetFieldAsString(ifield);
-					attributerecordlength += strlen(pstr) + 1;
+					int strlength = strlen(pstr) + 1;
+					attributerecordlength += sizeof(strlength) + strlength;
 					break;
 				case OFTBinary:
 					int blobsize;
 					feature->GetFieldAsBinary(ifield, &blobsize);
-					attributerecordlength += blobsize + 1;
+					int byteslength = blobsize;
+					attributerecordlength += sizeof(byteslength) + byteslength;
 					break;
 				case OFTDate:
 					attributerecordlength += 7 * sizeof(int); //int year, mon, day, hour, min, sec, tag;
@@ -329,6 +332,10 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 			memcpy(bytes + offset, &geometrytype, sizeof(geometrytype));
 			offset += sizeof(geometrytype);
 
+			int wkbsize = geometry->WkbSize();
+			memcpy(bytes + offset, &wkbsize, sizeof(wkbsize));
+			offset += sizeof(wkbsize);
+
 			geometry->exportToWkb((OGRwkbByteOrder) wkbNDR,
 					(unsigned char *) (bytes + offset));
 			offset += geometry->WkbSize();
@@ -363,7 +370,7 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					int blobsize;
 					unsigned char * bvalue = feature->GetFieldAsBinary(ifield,
 							&blobsize);
-					int bvaluelength = blobsize + 1;
+					int bvaluelength = blobsize;
 					memcpy(bytes + offset2, &bvaluelength,
 							sizeof(bvaluelength));
 					offset2 += sizeof(bvaluelength);
@@ -584,7 +591,11 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 		}
 		if (geometry) {
 			// wkb feature
-			geometry->importFromWkb((unsigned char *) (bytes + offset));
+			int wkbsize = 0;
+			memcpy(&wkbsize, bytes + offset, sizeof(wkbsize));
+			offset += sizeof(wkbsize);
+			geometry->importFromWkb((unsigned char *) (bytes + offset),
+					wkbsize);
 			offset += geometry->WkbSize();
 
 			OGRFeature *feature = new OGRFeature(defn);
@@ -760,4 +771,47 @@ LayerAttrDef * SpatialClient::getAttributeDef(const char *key) const {
 	}
 	LayerAttrDef *attrdef = new LayerAttrDef(bytes);
 	return attrdef;
+}
+
+void SpatialClient::putAllFeatures(const char *key,
+		const OGRLayer *layer) const {
+	LayerAllFeatures features(layer);
+	putAllFeatures(key, &features);
+}
+
+void SpatialClient::putAllFeatures(const char *key,
+		LayerAllFeatures * allfeatures) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return;
+	}
+
+	if (allfeatures == NULL) {
+		fprintf(stderr, "Nil AllFeatures object.\n");
+		return;
+	}
+
+	const char *bytes = allfeatures->getBytes();
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the attribute definition bytes.\n");
+		return;
+	}
+	int featurelength = allfeatures->getFeatureLength();
+
+	put(key, bytes, featurelength);
+}
+
+LayerAllFeatures * SpatialClient::getAllFeatures(const char *key) const {
+	if (key == NULL) {
+		fprintf(stderr, "Empty key.\n");
+		return NULL;
+	}
+	char *bytes = get(key);
+
+	if (bytes == NULL) {
+		fprintf(stderr, "Fail to get the layer features bytes.\n");
+		return NULL;
+	}
+	LayerAllFeatures *features = new LayerAllFeatures(bytes);
+	return features;
 }
