@@ -23,7 +23,7 @@ LayerAllFeatures::LayerAllFeatures(const LayerAllFeatures & allfeatures) :
 	setAllFeatures(allfeatures);
 }
 
-LayerAllFeatures::LayerAllFeatures(const OGRLayer *layer) :
+LayerAllFeatures::LayerAllFeatures(OGRLayer *layer) :
 		featurelength_(0), featurecount_(0), features_(NULL), buffer_(NULL), bufferflag_(
 				UNINITIALIZED) {
 	setAllFeatures(layer);
@@ -46,7 +46,7 @@ LayerAllFeatures::~LayerAllFeatures() {
 		free(buffer_);
 }
 
-void LayerAllFeatures::setAllFeatures(const OGRLayer *layer) {
+void LayerAllFeatures::setAllFeatures(OGRLayer *layer) {
 	if (layer == NULL)
 		return;
 	featurelength_ = 0;
