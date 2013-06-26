@@ -28,7 +28,7 @@ bool SpatialClient::connect(const char *ip, int port, int dbno) {
 			redisFree(con_);
 		return false;
 	}
-	redisReply *reply = redisCommand(con_, "select %d", dbno);
+	redisReply *reply = (redisReply *)redisCommand(con_, "select %d", dbno);
 	if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
 		fprintf(stderr, "Select db error: %s\n", reply->str);
 		if (reply)
@@ -56,7 +56,7 @@ char *SpatialClient::get(const char *key, int *size) const {
 		fprintf(stderr, "Redis connection is not available.\n");
 		return NULL;
 	}
-	redisReply *reply = redisCommand(con_, "GET %s", key);
+	redisReply *reply = (redisReply *)redisCommand(con_, "GET %s", key);
 	if (reply == NULL || reply->type != REDIS_REPLY_STRING) {
 		fprintf(stderr, "Redis reply error: not a string.\n");
 		if (reply)
@@ -87,9 +87,9 @@ bool SpatialClient::put(const char *key, const char *value, int size) const {
 	}
 	redisReply *reply = NULL;
 	if (size) {
-		reply = redisCommand(con_, "SET %s %b", key, value, size);
+		reply = (redisReply *)redisCommand(con_, "SET %s %b", key, value, size);
 	} else {
-		reply = redisCommand(con_, "SET %s %s", key, value);
+		reply = (redisReply *)redisCommand(con_, "SET %s %s", key, value);
 	}
 
 	if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
@@ -103,7 +103,7 @@ bool SpatialClient::put(const char *key, const char *value, int size) const {
 	return true;
 }
 
-void SpatialClient::putLayer(const char *key, const OGRLayer *layer) const {
+void SpatialClient::putLayer(const char *key, OGRLayer *layer) const {
 	if (key == NULL) {
 		fprintf(stderr, "Empty key.\n");
 		return;
@@ -136,7 +136,7 @@ OGRLayer *SpatialClient::getLayer(const char *key) const {
 	return layer;
 }
 
-char *SpatialClient::serialize(const OGRLayer *poLayer) const {
+char *SpatialClient::serialize(OGRLayer *poLayer) const {
 	if (poLayer == NULL)
 		return NULL;
 
@@ -219,17 +219,19 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 				case OFTReal:
 					attributerecordlength += sizeof(double);
 					break;
-				case OFTString:
+				case OFTString: {
 					const char *pstr = feature->GetFieldAsString(ifield);
 					int strlength = strlen(pstr) + 1;
 					attributerecordlength += sizeof(strlength) + strlength;
 					break;
-				case OFTBinary:
+				}
+				case OFTBinary: {
 					int blobsize;
 					feature->GetFieldAsBinary(ifield, &blobsize);
 					int byteslength = blobsize;
 					attributerecordlength += sizeof(byteslength) + byteslength;
 					break;
+				}
 				case OFTDate:
 					attributerecordlength += 7 * sizeof(int); //int year, mon, day, hour, min, sec, tag;
 					break;
@@ -348,17 +350,19 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 				offset2 += sizeof(attributetype);
 
 				switch (attributetype) {
-				case OFTInteger:
+				case OFTInteger: {
 					int ivalue = feature->GetFieldAsInteger(ifield);
 					memcpy(bytes + offset2, &ivalue, sizeof(ivalue));
 					offset2 += sizeof(ivalue);
 					break;
-				case OFTReal:
+				}
+				case OFTReal: {
 					double dvalue = feature->GetFieldAsDouble(ifield);
 					memcpy(bytes + offset2, &dvalue, sizeof(dvalue));
 					offset2 += sizeof(dvalue);
 					break;
-				case OFTString:
+				}
+				case OFTString: {
 					const char *pstr = feature->GetFieldAsString(ifield);
 					int strlength = strlen(pstr) + 1;
 					memcpy(bytes + offset2, &strlength, sizeof(strlength));
@@ -366,7 +370,8 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					memcpy(bytes + offset2, pstr, strlength);
 					offset2 += strlength;
 					break;
-				case OFTBinary:
+				}
+				case OFTBinary: {
 					int blobsize;
 					unsigned char * bvalue = feature->GetFieldAsBinary(ifield,
 							&blobsize);
@@ -377,7 +382,8 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					memcpy(bytes + offset2, bvalue, bvaluelength);
 					offset2 += bvaluelength;
 					break;
-				case OFTDate:
+				}
+				case OFTDate: {
 					int year, mon, day, hour, min, sec, tag;
 					feature->GetFieldAsDateTime(ifield, &year, &mon, &day,
 							&hour, &min, &sec, &tag);
@@ -396,8 +402,9 @@ char *SpatialClient::serialize(const OGRLayer *poLayer) const {
 					memcpy(bytes + offset2, &tag, sizeof(tag));
 					offset2 += sizeof(tag);
 					break;
+				}
 				default:
-					continue;
+					break;
 				}
 			}
 		}
@@ -452,7 +459,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	int strWKTlength = 0;
 	memcpy(&strWKTlength, bytes + offset, sizeof(strWKTlength));
 	offset += sizeof(strWKTlength);
-	char *strWKT = malloc(strWKTlength);
+	char *strWKT = (char *)malloc(strWKTlength);
 	if (strWKT == NULL) {
 		fprintf(stderr, "Fail to alloc memory for strWKT.\n");
 		return NULL;
@@ -516,7 +523,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 		memcpy(&fieldtype, bytes + offset, sizeof(fieldtype));
 		offset += sizeof(fieldtype);
 
-		OGRFieldDefn oField(sztitle, fieldtype);
+		OGRFieldDefn oField(sztitle, (OGRFieldType)fieldtype);
 		oField.SetWidth(nWidth);
 		oField.SetPrecision(nDecimals);
 
@@ -608,21 +615,23 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 				offset2 += sizeof(ftype);
 				OGRFieldType fieldtype = (OGRFieldType) ftype;
 				switch (fieldtype) {
-				case OFTInteger:
+				case OFTInteger: {
 					int ivalue = 0;
 					memcpy(&ivalue, bytes + offset2, sizeof(ivalue));
 					offset2 += sizeof(ivalue);
 
 					feature->SetField(ifield, ivalue);
 					break;
-				case OFTReal:
+				}
+				case OFTReal: {
 					double dvalue = 0;
 					memcpy(&dvalue, bytes + offset2, sizeof(dvalue));
 					offset2 += sizeof(dvalue);
 
 					feature->SetField(ifield, dvalue);
 					break;
-				case OFTString:
+				}
+				case OFTString: {
 					int strlength;
 					memcpy(&strlength, bytes + offset2, sizeof(strlength));
 					offset2 += sizeof(strlength);
@@ -636,7 +645,8 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 
 					feature->SetField(ifield, pstr);
 					break;
-				case OFTBinary:
+				}
+				case OFTBinary: {
 					int bvaluelength = 0;
 					memcpy(&bvaluelength, bytes + offset2,
 							sizeof(bvaluelength));
@@ -653,7 +663,8 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 					feature->SetField(ifield, bvaluelength,
 							(unsigned char *) bvalue);
 					break;
-				case OFTDate:
+				}
+				case OFTDate: {
 					int year, mon, day, hour, min, sec, tag;
 					year = mon = day = hour = min = sec = tag;
 
@@ -675,6 +686,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 					feature->SetField(ifield, year, mon, day, hour, min, sec,
 							tag);
 					break;
+				}
 				default:
 					break;
 				}
@@ -689,7 +701,7 @@ OGRLayer *SpatialClient::deserialize(const char *bytes) const {
 	return poLayer;
 }
 
-void SpatialClient::putMetadata(const char *key, const OGRLayer *layer) const {
+void SpatialClient::putMetadata(const char *key, OGRLayer *layer) const {
 	LayerMetadata metadata(layer);
 	putMetadata(key, &metadata);
 }
@@ -732,7 +744,7 @@ LayerMetadata * SpatialClient::getMetadata(const char *key) const {
 }
 
 void SpatialClient::putAttributeDef(const char *key,
-		const OGRLayer *layer) const {
+		OGRLayer *layer) const {
 	LayerAttrDef attrdef(layer);
 	putAttributeDef(key, &attrdef);
 }
@@ -774,7 +786,7 @@ LayerAttrDef * SpatialClient::getAttributeDef(const char *key) const {
 }
 
 void SpatialClient::putAllFeatures(const char *key,
-		const OGRLayer *layer) const {
+		OGRLayer *layer) const {
 	LayerAllFeatures features(layer);
 	putAllFeatures(key, &features);
 }
@@ -817,7 +829,7 @@ LayerAllFeatures * SpatialClient::getAllFeatures(const char *key) const {
 }
 
 void SpatialClient::putAllRecords(const char *key,
-		const OGRLayer *layer) const {
+		OGRLayer *layer) const {
 	LayerAllRecords records(layer);
 	putAllRecords(key, &records);
 }
