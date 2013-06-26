@@ -8,6 +8,8 @@
 #define SPATIALCLIENT_H_
 
 #include "layerMetadata.h"
+#include "layerAttrDef.h"
+#include "layerAllFeatures.h"
 
 struct redisContext;
 class OGRLayer;
@@ -37,9 +39,9 @@ public:
 	void putAttributeDef(const char *key, LayerAttrDef * attrdef) const;
 	LayerAttrDef * getAttributeDef(const char *key) const;
 
-	void getFeatureCount();
-	void putFeature();
-	void getFeature();
+	void putAllFeatures(const char *key, const OGRLayer *layer) const;
+	void putAllFeatures(const char *key, LayerAllFeatures * allfeatures) const;
+	LayerAllFeatures * getAllFeatures(const char *key) const;
 
 	void getAttributeCount();
 	void putAttributeRecord();
