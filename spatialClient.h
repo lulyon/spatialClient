@@ -29,28 +29,28 @@ public:
 	bool put(const char *key, const char *value) const;
 	bool put(const char *key, const char *value, int size) const; //size means value size.
 
-	void putLayer(const char *key, const OGRLayer *layer) const;
+	void putLayer(const char *key, OGRLayer *layer) const;
 	OGRLayer *getLayer(const char *key) const;
 
-	void putMetadata(const char *key, const OGRLayer *layer) const;
+	void putMetadata(const char *key, OGRLayer *layer) const;
 	void putMetadata(const char *key, LayerMetadata *metadata) const;
 	LayerMetadata * getMetadata(const char *key) const;
 
-	void putAttributeDef(const char *key, const OGRLayer *layer) const;
+	void putAttributeDef(const char *key, OGRLayer *layer) const;
 	void putAttributeDef(const char *key, LayerAttrDef * attrdef) const;
 	LayerAttrDef * getAttributeDef(const char *key) const;
 
-	void putAllFeatures(const char *key, const OGRLayer *layer) const;
+	void putAllFeatures(const char *key, OGRLayer *layer) const;
 	void putAllFeatures(const char *key, LayerAllFeatures * allfeatures) const;
 	LayerAllFeatures * getAllFeatures(const char *key) const;
 
-	void putAllRecords(const char *key, const OGRLayer *layer) const;
+	void putAllRecords(const char *key, OGRLayer *layer) const;
 	void putAllRecords(const char *key, LayerAllRecords * allrecords) const;
 	LayerAllRecords * getAllRecords(const char *key) const;
 private:
 	SpatialClient(const SpatialClient &);
 	void operator=(const SpatialClient &);
-	char *serialize(const OGRLayer *poLayer) const;
+	char *serialize(OGRLayer *poLayer) const;
 	OGRLayer *deserialize(const char *bytes) const;
 	redisContext *con_;
 };
