@@ -7,8 +7,10 @@
 #ifndef LAYERALLRECORDS_H_
 #define LAYERALLRECORDS_H_
 
+class OGRLayer;
+
 typedef enum {
-  FTInteger = 0, FTReal = 2, FTString = 4, FTBinary = 8, FTDate = 9
+	FTInteger = 0, FTReal = 2, FTString = 4, FTBinary = 8, FTDate = 9
 } FieldType;
 
 typedef struct {
