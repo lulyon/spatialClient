@@ -1,304 +1,80 @@
-/// @file layerAttrDef.cc
+/// @file layerAllRecords.h
 /// @author luliang@ict.ac.cn
 /// @copybrief Copyright 2012 ICT, CAS. All rights reserved.
 /// @version 0.6
-/// @date 2013-06-21
+/// @date 2013-06-25
 
-#include "layerAttrDef.h"
+#ifndef LAYERALLRECORDS_H_
+#define LAYERALLRECORDS_H_
 
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
+class OGRLayer;
 
-#include <ogrsf_frmts.h>
+typedef enum {
+	FTInteger = 0, FTReal = 2, FTString = 4, FTBinary = 8, FTDate = 9
+} FieldType;
 
-LayerAttrDef::LayerAttrDef() :
-		attrdeflength_(0), fieldcount_(0), fields_(NULL), buffer_(NULL), bufferflag_(
-				UNINITIALIZED) {
-}
+typedef struct {
+	int strlength_;
+	char * str_;
+} FieldStringType;
 
-LayerAttrDef::LayerAttrDef(const LayerAttrDef & attrdef) :
-		attrdeflength_(0), fieldcount_(0), fields_(NULL), buffer_(NULL), bufferflag_(
-				UNINITIALIZED) {
-	setAttrDef(attrdef);
-}
+typedef struct {
+	int byteslength_;
+	char * bytes_;
+} FieldBinaryType;
 
-LayerAttrDef::LayerAttrDef(const OGRLayer *layer) :
-		attrdeflength_(0), fieldcount_(0), fields_(NULL), buffer_(NULL), bufferflag_(
-				UNINITIALIZED) {
-	setAttrDef(layer);
-}
+typedef struct {
+	int year_, mon_, day_, hour_, min_, sec_, tag_;
+} FieldDateType;
 
-LayerAttrDef::LayerAttrDef(const char * bytes) :
-		attrdeflength_(0), fieldcount_(0), fields_(NULL), buffer_(NULL), bufferflag_(
-				UNINITIALIZED) {
-	setAttrDef(bytes);
-}
+typedef struct {
+	char fieldtype_;
+	union {
+		int ivalue_;
+		double dvalue_;
+		FieldStringType svalue_;
+		FieldBinaryType bvalue_;
+		FieldDateType tvalue_;
+	} field_;
 
-LayerAttrDef::~LayerAttrDef() {
-	for (int i = 0; i < fieldcount_; ++i) {
-		if (fields_[i].sztitle_)
-			free(fields_[i].sztitle_);
-	}
-	if (fields_)
-		free(fields_);
-	if (buffer_)
-		free(buffer_);
-}
+} LayerRecordField;
 
-void LayerAttrDef::setAttrDef(const OGRLayer *layer) {
-	if (layer == NULL)
-		return;
-	attrdeflength_ = 0;
-	// attrdeflength_
-	attrdeflength_ += sizeof(attrdeflength_);
-	// fieldcount_
-	for (int i = 0; i < fieldcount_; ++i) {
-		if (fields_[i].sztitle_)
-			free(fields_[i].sztitle_);
-	}
-	fieldcount_ = layer->GetLayerDefn()->GetFieldCount();
-	attrdeflength_ += sizeof(fieldcount_);
+class LayerAllRecords {
+public:
+	LayerAllRecords();
+	LayerAllRecords(const LayerAllRecords & allrecords);
+	LayerAllRecords(OGRLayer *layer);
+	LayerAllRecords(const char * bytes);
+	~LayerAllRecords();
 
-	if (fields_ == NULL) {
-		fields_ = (LayerAttrDefField *) malloc(
-				sizeof(LayerAttrDefField) * fieldcount_);
-	} else {
-		fields_ = (LayerAttrDefField *) realloc(fields_,
-				sizeof(LayerAttrDefField) * fieldcount_);
-	}
-	if (fields_ == NULL) {
-		fprintf(stderr, "Fail to alloc memory for fields.\n");
-		return;
-	}
+	const char *getBytes();
 
-	for (int ipoField = 0; ipoField < fieldcount_; ipoField++) {
-		OGRFieldDefn* poField = layer->GetLayerDefn()->GetFieldDefn(ipoField);
-		const char *sztitle = poField->GetNameRef();
-		int sztitlelength = strlen(sztitle) + 1;
-		attrdeflength_ += sztitlelength + sizeof(sztitlelength);
+	int getRecordLength() const;
+	int getRecordCount() const;
+	int getFieldCount() const;
+	const LayerRecordField *getRecords() const;
+	const LayerRecordField *getRecord(int index) const;
+	const LayerRecordField *getRecordField(int rindex, int findex) const;
 
-		fields_[ipoField].sztitlelength_ = sztitlelength;
+	void setAllRecords(OGRLayer *layer);
+	void setAllRecords(const char * bytes);
+	void setAllRecords(const LayerAllRecords & allrecords);
 
-		fields_[ipoField].sztitle_ = (char *) malloc(
-				fields_[ipoField].sztitlelength_);
-		if (fields_[ipoField].sztitle_ == NULL) {
-			fprintf(stderr, "Fail to alloc memory for field sztitle.\n");
-			return;
-		}
-		memcpy(fields_[ipoField].sztitle_, sztitle,
-				fields_[ipoField].sztitlelength_);
+private:
+	typedef enum {
+		UNINITIALIZED, STALE, LATEST
+	} BufferFlagType;
 
-		int nWidth = poField->GetWidth();
-		attrdeflength_ += sizeof(nWidth);
-		fields_[ipoField].nWidth_ = nWidth;
+	void operator=(const LayerAllRecords &);
 
-		int nDecimals = poField->GetPrecision();
-		attrdeflength_ += sizeof(nDecimals);
-		fields_[ipoField].nDecimals_ = nDecimals;
+	int recordlength_;
+	int recordcount_;
+	int fieldcount_;
 
-		char fieldtype = (char) poField->GetType();
-		attrdeflength_ += sizeof(fieldtype);
-		fields_[ipoField].fieldtype_ = fieldtype;
-	}
+	LayerRecordField * fields_;
 
-	// set buffer flag.
-	if (bufferflag_ == LATEST)
-		bufferflag_ = STALE;
-}
+	char *buffer_;
+	BufferFlagType bufferflag_;
+};
 
-void LayerAttrDef::setAttrDef(const char * bytes) {
-	if (bytes == NULL)
-		return;
-
-	int offset = 0;
-	// attrdeflength_
-	memcpy(&attrdeflength_, bytes + offset, sizeof(attrdeflength_));
-	offset += sizeof(attrdeflength_);
-
-	// fieldcount_
-	for (int i = 0; i < fieldcount_; ++i) {
-		if (fields_[i].sztitle_)
-			free(fields_[i].sztitle_);
-	}
-	memcpy(&fieldcount_, bytes + offset, sizeof(fieldcount_));
-	offset += sizeof(fieldcount_);
-
-	if (fields_ == NULL) {
-		fields_ = (LayerAttrDefField *) malloc(
-				sizeof(LayerAttrDefField) * fieldcount_);
-	} else {
-		fields_ = (LayerAttrDefField *) realloc(fields_,
-				sizeof(LayerAttrDefField) * fieldcount_);
-	}
-	if (fields_ == NULL) {
-		fprintf(stderr, "Fail to alloc memory for fields.\n");
-		return;
-	}
-
-	for (int ipoField = 0; ipoField < fieldcount_; ipoField++) {
-		// sztitle
-		memcpy(&fields_[ipoField].sztitlelength_, bytes + offset,
-				sizeof(fields_[ipoField].sztitlelength_));
-
-		fields_[ipoField].sztitle_ = (char *) malloc(
-				fields_[ipoField].sztitlelength_);
-		if (fields_[ipoField].sztitle_ == NULL) {
-			fprintf(stderr, "Fail to alloc memory for field sztitle.\n");
-			return;
-		}
-		memcpy(fields_[ipoField].sztitle_, bytes + offset,
-				fields_[ipoField].sztitlelength_);
-
-		offset += fields_[ipoField].sztitlelength_
-				+ sizeof(fields_[ipoField].sztitlelength_);
-
-		// nWidth
-		memcpy(&fields_[ipoField].nWidth_, bytes + offset,
-				sizeof(fields_[ipoField].nWidth_));
-		offset += sizeof(fields_[ipoField].nWidth_);
-
-		// nDecimals precision
-		memcpy(&fields_[ipoField].nDecimals_, bytes + offset,
-				sizeof(fields_[ipoField].nDecimals_));
-		offset += sizeof(fields_[ipoField].nDecimals_);
-
-		// fieldtype
-		char fieldtype = 0;
-		memcpy(&fields_[ipoField].fieldtype_, bytes + offset,
-				sizeof(fields_[ipoField].fieldtype_));
-		offset += sizeof(fields_[ipoField].fieldtype_);
-	}
-
-	assert(offset == attrdeflength_);
-	// alloc memory for buffer_
-	if (bufferflag_ == UNINITIALIZED) {
-		buffer_ = (char *) malloc(attrdeflength_);
-	} else {
-		buffer_ = (char *) realloc(buffer_, attrdeflength_);
-	}
-	if (buffer_ == NULL) {
-		fprintf(stderr, "Fail to alloc memory for buffer_.\n");
-		return;
-	}
-
-	memcpy(buffer_, bytes, attrdeflength_);
-
-	// set buffer flag.
-	bufferflag_ = LATEST;
-}
-
-void LayerAttrDef::setAttrDef(const LayerAttrDef & attrdef) {
-	// attrdeflength_
-	attrdeflength_ = attrdef.getAttrDefLength();
-
-	//fieldcount_
-	for (int i = 0; i < fieldcount_; ++i) {
-		if (fields_[i].sztitle_)
-			free(fields_[i].sztitle_);
-	}
-	fieldcount_ = attrdef.getFieldCount();
-
-	if (fields_ == NULL) {
-		fields_ = (LayerAttrDefField *) malloc(
-				sizeof(LayerAttrDefField) * fieldcount_);
-	} else {
-		fields_ = (LayerAttrDefField *) realloc(fields_,
-				sizeof(LayerAttrDefField) * fieldcount_);
-	}
-	if (fields_ == NULL) {
-		fprintf(stderr, "Fail to alloc memory for fields.\n");
-		return;
-	}
-
-	for (int i = 0; i < fieldcount_; ++i) {
-		const LayerAttrDefField *field = attrdef.getField(i);
-		fields_[i].sztitlelength_ = field->sztitlelength_;
-		fields_[i].sztitle_ = (char *) malloc(
-				fields_[i].sztitlelength_);
-		if (fields_[i].sztitle_ == NULL) {
-			fprintf(stderr, "Fail to alloc memory for field sztitle.\n");
-			return;
-		}
-
-		memcpy(fields_[i].sztitle_, field->sztitle_, field->sztitlelength_);
-		fields_[i].nWidth_ = field->nWidth_;
-		fields_[i].nDecimals_ = field->nDecimals_;
-		fields_[i].fieldtype_ = field->fieldtype_;
-	}
-	// set buffer flag.
-	if (bufferflag_ == LATEST)
-		bufferflag_ = STALE;
-}
-
-const char *LayerAttrDef::getBytes() {
-	// alloc memory or return the buffered result.
-	if (bufferflag_ == UNINITIALIZED) {
-		buffer_ = (char *) malloc(attrdeflength_);
-	} else if (bufferflag_ == STALE) {
-		buffer_ = (char *) realloc(buffer_, attrdeflength_);
-	} else {
-		return buffer_;
-	}
-
-	char *bytes = buffer_;
-
-	int offset = 0;
-	// attrdeflength_
-	memcpy(bytes + offset, &attrdeflength_, sizeof(attrdeflength_));
-	offset += sizeof(attrdeflength_);
-
-	memcpy(bytes + offset, &fieldcount_, sizeof(fieldcount_));
-	offset += sizeof(fieldcount_);
-
-	for (int ipoField = 0; ipoField < fieldcount_; ipoField++) {
-		// sztitle
-		memcpy(bytes + offset, &fields_[ipoField].sztitlelength_,
-				sizeof(fields_[ipoField].sztitlelength_));
-
-		memcpy(bytes + offset, fields_[ipoField].sztitle_,
-				fields_[ipoField].sztitlelength_);
-
-		offset += fields_[ipoField].sztitlelength_
-				+ sizeof(fields_[ipoField].sztitlelength_);
-
-		// nWidth
-		memcpy(bytes + offset, &fields_[ipoField].nWidth_,
-				sizeof(fields_[ipoField].nWidth_));
-		offset += sizeof(fields_[ipoField].nWidth_);
-
-		// nDecimals precision
-		memcpy(bytes + offset, &fields_[ipoField].nDecimals_,
-				sizeof(fields_[ipoField].nDecimals_));
-		offset += sizeof(fields_[ipoField].nDecimals_);
-
-		// fieldtype
-		char fieldtype = 0;
-		memcpy(bytes + offset, &fields_[ipoField].fieldtype_,
-				sizeof(fields_[ipoField].fieldtype_));
-		offset += sizeof(fields_[ipoField].fieldtype_);
-	}
-
-	assert(offset == attrdeflength_);
-
-	bufferflag_ = LATEST;
-	return buffer_;
-}
-
-int LayerAttrDef::getAttrDefLength() const {
-	return attrdeflength_;
-}
-
-int LayerAttrDef::getFieldCount() const {
-	return fieldcount_;
-}
-
-const LayerAttrDefField *LayerAttrDef::getFields() const {
-	return fields_;
-}
-
-const LayerAttrDefField *LayerAttrDef::getField(int index) const {
-	if (fields_ == NULL || index < 0 || index >= fieldcount_)
-		return NULL;
-	return &fields_[index];
-}
+#endif /* LAYERALLRECORDS_H_ */
