@@ -13,7 +13,7 @@
 #include <ogrsf_frmts.h>
 
 LayerAllRecords::LayerAllRecords() :
-  	recordlength_(0), recordcount_(0), fieldcount_(NULL), fields_(NULL), buffer_(
+		recordlength_(0), recordcount_(0), fieldcount_(NULL), fields_(NULL), buffer_(
 				NULL), bufferflag_(UNINITIALIZED) {
 }
 
@@ -169,7 +169,7 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 			for (int ifield = 0; ifield < fieldcount_; ++ifield) {
 				OGRFieldDefn* poField = layer->GetLayerDefn()->GetFieldDefn(
 						ifield);
-				int index = ifeature * fieldcount_ * ifield;
+				int index = ifeature * fieldcount_ + ifield;
 				char fieldtype = (char) poField->GetType();
 				fields_[index].fieldtype_ = fieldtype;
 
@@ -240,10 +240,265 @@ void LayerAllRecords::setAllRecords(const OGRLayer *layer) {
 }
 
 void LayerAllRecords::setAllRecords(const char * bytes) {
+	if (bytes == NULL)
+		return;
+
+	int offset = 0;
+	// recordlength_
+	memcpy(&recordlength_, bytes + offset, sizeof(recordlength_));
+	offset += sizeof(recordlength_);
+
+	// clear
+	for (int i = 0; i < recordcount_; ++i) {
+		for (int j = 0; j < fieldcount_; ++j) {
+			int index = i * fieldcount_ + j;
+			switch (fields_[index].fieldtype_) {
+			case FTInteger:
+				break;
+			case FTReal:
+				break;
+			case FTString:
+				char *str = fields_[index].field_.svalue_.str_;
+				if (str)
+					free(str);
+				break;
+			case FTBinary:
+				char *bytes = fields_[index].field_.bvalue_.bytes_;
+				if (bytes)
+					free(bytes);
+				break;
+			case FTDate:
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	// recordcount_
+	memcpy(&recordcount_, bytes + offset, sizeof(recordcount_));
+	offset += sizeof(recordcount_);
+
+	// fieldcount_
+	memcpy(&recordcount_, bytes + offset, sizeof(recordcount_));
+	offset += sizeof(recordcount_);
+
+	if (fields_ == NULL) {
+		fields_ = (LayerRecordField *) malloc(
+				sizeof(LayerRecordField) * recordcount_ * fieldcount_);
+	} else {
+		fields_ = (LayerRecordField *) realloc(fields_,
+				sizeof(LayerRecordField) * recordcount_ * fieldcount_);
+	}
+	if (fields_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for record fields.\n");
+		return;
+	}
+
+	for (int i = 0; i < recordcount_; ++i) {
+		for (int j = 0; j < fieldcount_; ++j) {
+			int index = i * fieldcount_ + j;
+			char fieldtype;
+			memcpy(&fieldtype, bytes + offset, sizeof(fieldtype));
+			offset += sizeof(fieldtype);
+			fields_[index].fieldtype_ = fieldtype;
+			switch (fieldtype) {
+			case FTInteger:
+				int ivalue = 0;
+				memcpy(&ivalue, bytes + offset, sizeof(ivalue));
+				offset += sizeof(ivalue);
+				fields_[index].field_.ivalue_ = ivalue;
+				break;
+			case FTReal:
+				double dvalue = 0;
+				memcpy(&dvalue, bytes + offset, sizeof(dvalue));
+				offset += sizeof(dvalue);
+				fields_[index].field_.dvalue_ = dvalue;
+				break;
+			case FTString:
+				int strlength = 0;
+				memcpy(&strlength, bytes + offset, sizeof(strlength));
+				offset += sizeof(strlength);
+				fields_[index].field_.svalue_.strlength_ = strlength;
+				fields_[index].field_.svalue_.str_ = (char *) malloc(strlength);
+				if (fields_[index].field_.svalue_.str_ == NULL) {
+					fprintf(stderr,
+							"Fail to alloc memory for record field string.\n");
+					return;
+				}
+				memcpy(fields_[index].field_.svalue_.str_, bytes + offset,
+						strlength);
+				offset += strlength;
+				break;
+			case FTBinary:
+				int blobsize = 0;
+				memcpy(&blobsize, bytes + offset, sizeof(blobsize));
+				offset += sizeof(blobsize);
+				fields_[index].field_.bvalue_.byteslength_ = blobsize;
+				fields_[index].field_.bvalue_.bytes_ = (char *) malloc(
+						blobsize);
+				if (fields_[index].field_.bvalue_.bytes_ == NULL) {
+					fprintf(
+							stderr,
+							"Fail to alloc memory for record field bytes array.\n");
+					return;
+				}
+				memcpy(fields_[index].field_.bvalue_.bytes_, bytes + offset,
+						blobsize);
+				offset += blobsize;
+				break;
+			case FTDate:
+				int year, mon, day, hour, min, sec, tag;
+				memcpy(&year, bytes + offset, sizeof(year));
+				offset += sizeof(year);
+				memcpy(&mon, bytes + offset, sizeof(mon));
+				offset += sizeof(mon);
+				memcpy(&day, bytes + offset, sizeof(day));
+				offset += sizeof(day);
+				memcpy(&hour, bytes + offset, sizeof(hour));
+				offset += sizeof(hour);
+				memcpy(&min, bytes + offset, sizeof(min));
+				offset += sizeof(min);
+				memcpy(&sec, bytes + offset, sizeof(sec));
+				offset += sizeof(sec);
+				memcpy(&tag, bytes + offset, sizeof(tag));
+				offset += sizeof(tag);
+
+				fields_[index].field_.tvalue_.year_ = year;
+				fields_[index].field_.tvalue_.mon_ = mon;
+				fields_[index].field_.tvalue_.day_ = day;
+				fields_[index].field_.tvalue_.hour_ = hour;
+				fields_[index].field_.tvalue_.min_ = min;
+				fields_[index].field_.tvalue_.sec_ = sec;
+				fields_[index].field_.tvalue_.tag_ = tag;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	assert(offset == recordlength_);
+	// alloc memory for buffer_
+	if (bufferflag_ == UNINITIALIZED) {
+		buffer_ = (char *) malloc(recordlength_);
+	} else {
+		buffer_ = (char *) realloc(buffer_, recordlength_);
+	}
+	if (buffer_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for buffer_.\n");
+		return;
+	}
+
+	memcpy(buffer_, bytes, recordlength_);
+
+	// set buffer flag.
+	bufferflag_ = LATEST;
 
 }
 
 void LayerAllRecords::setAllRecords(const LayerAllRecords & allrecords) {
+	// recordlength_
+	recordlength_ = allrecords.getRecordLength();
+
+	// clear
+	for (int i = 0; i < recordcount_; ++i) {
+		for (int j = 0; j < fieldcount_; ++j) {
+			int index = i * fieldcount_ + j;
+			switch (fields_[index].fieldtype_) {
+			case FTInteger:
+				break;
+			case FTReal:
+				break;
+			case FTString:
+				char *str = fields_[index].field_.svalue_.str_;
+				if (str)
+					free(str);
+				break;
+			case FTBinary:
+				char *bytes = fields_[index].field_.bvalue_.bytes_;
+				if (bytes)
+					free(bytes);
+				break;
+			case FTDate:
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	// recordcount_
+	recordcount_ = allrecords.getRecordCount();
+
+	// fieldcount_
+	fieldcount_ = allrecords.getFieldCount();
+
+	if (fields_ == NULL) {
+		fields_ = (LayerRecordField *) malloc(
+				sizeof(LayerRecordField) * recordcount_ * fieldcount_);
+	} else {
+		fields_ = (LayerRecordField *) realloc(fields_,
+				sizeof(LayerRecordField) * recordcount_ * fieldcount_);
+	}
+	if (fields_ == NULL) {
+		fprintf(stderr, "Fail to alloc memory for record fields.\n");
+		return;
+	}
+
+	for (int i = 0; i < recordcount_; ++i) {
+		for (int j = 0; j < fieldcount_; ++j) {
+			int index = i * fieldcount_ + j;
+			LayerRecordField *field = allrecords.getRecordField(i, j);
+			char fieldtype = field->fieldtype_;
+			fields_[index].fieldtype_ = fieldtype;
+			switch (fieldtype) {
+			case FTInteger:
+				fields_[index].field_.ivalue_ = field->field_.ivalue_;
+				break;
+			case FTReal:
+				fields_[index].field_.dvalue_ = field->field_.dvalue_;
+				break;
+			case FTString:
+				int strlength = field->field_.svalue_.strlength_;
+				fields_[index].field_.svalue_.strlength_ = strlength;
+				fields_[index].field_.svalue_.str_ = (char *) malloc(strlength);
+				if (fields_[index].field_.svalue_.str_ == NULL) {
+					fprintf(stderr,
+							"Fail to alloc memory for record field string.\n");
+					return;
+				}
+				memcpy(fields_[index].field_.svalue_.str_, field->field_.svalue_.str_,
+						strlength);
+				break;
+			case FTBinary:
+				int blobsize = field->field_.bvalue_.byteslength_;
+				fields_[index].field_.bvalue_.byteslength_ = blobsize;
+				fields_[index].field_.bvalue_.bytes_ = (char *) malloc(
+						blobsize);
+				if (fields_[index].field_.bvalue_.bytes_ == NULL) {
+					fprintf(
+							stderr,
+							"Fail to alloc memory for record field bytes array.\n");
+					return;
+				}
+				memcpy(fields_[index].field_.bvalue_.bytes_, field->field_.bvalue_.bytes_,
+						blobsize);
+				break;
+			case FTDate:
+				fields_[index].field_.tvalue_.year_ = field->field_.tvalue_.year_;
+				fields_[index].field_.tvalue_.mon_ = field->field_.tvalue_.mon_;
+				fields_[index].field_.tvalue_.day_ = field->field_.tvalue_.day_;
+				fields_[index].field_.tvalue_.hour_ = field->field_.tvalue_.hour_;
+				fields_[index].field_.tvalue_.min_ = field->field_.tvalue_.min_;
+				fields_[index].field_.tvalue_.sec_ = field->field_.tvalue_.sec_;
+				fields_[index].field_.tvalue_.tag_ = field->field_.tvalue_.tag_;
+				break;
+			default:
+				break;
+			}
+		}
+	}
 
 }
 
