@@ -23,7 +23,7 @@ LayerMetadata::LayerMetadata(const LayerMetadata & metadata) :
 	setMetadata(metadata);
 }
 
-LayerMetadata::LayerMetadata(const OGRLayer *layer) :
+LayerMetadata::LayerMetadata(OGRLayer *layer) :
 		metadatalength_(0), layernamelength_(0), layername_(NULL), geotype_(0), strWKTlength_(
 				0), strWKT_(NULL), buffer_(NULL), bufferflag_(UNINITIALIZED) {
 	setMetadata(layer);
@@ -111,7 +111,7 @@ const char *LayerMetadata::getStrWKT() const {
 	return strWKT_;
 }
 
-void LayerMetadata::setMetadata(const OGRLayer *layer) {
+void LayerMetadata::setMetadata(OGRLayer *layer) {
 	if (layer == NULL)
 		return;
 
