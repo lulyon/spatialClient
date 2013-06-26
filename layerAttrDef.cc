@@ -1,6 +1,6 @@
 /// @file layerAttrDef.cc
 /// @author luliang@ict.ac.cn
-/// @copybrief Copyright 2012 ICT, CAS. All rights reserved.
+/// @copybrief Copyright 2013 ICT, CAS. All rights reserved.
 /// @version 0.1
 /// @date 2013-06-21
 
