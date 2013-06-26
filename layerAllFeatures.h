@@ -19,7 +19,7 @@ class LayerAllFeatures {
 public:
 	LayerAllFeatures();
 	LayerAllFeatures(const LayerAllFeatures & allfeatures);
-	LayerAllFeatures(const OGRLayer *layer);
+	LayerAllFeatures(OGRLayer *layer);
 	LayerAllFeatures(const char * bytes);
 	~LayerAllFeatures();
 
@@ -30,7 +30,7 @@ public:
 	const LayerFeature *getFeatures() const;
 	const LayerFeature *getFeature(int index) const;
 
-	void setAllFeatures(const OGRLayer *layer);
+	void setAllFeatures(OGRLayer *layer);
 	void setAllFeatures(const char * bytes);
 	void setAllFeatures(const LayerAllFeatures & allfeatures);
 
@@ -39,7 +39,7 @@ private:
 		UNINITIALIZED, STALE, LATEST
 	} BufferFlagType;
 
-	void operator=(const LayerAllRecords &);
+	void operator=(const LayerAllFeatures &);
 
 	int featurelength_;
 	int featurecount_;
