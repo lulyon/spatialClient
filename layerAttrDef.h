@@ -1,54 +1,80 @@
-/// @file layerAttrDef.h
+/// @file layerAllRecords.h
 /// @author luliang@ict.ac.cn
 /// @copybrief Copyright 2012 ICT, CAS. All rights reserved.
 /// @version 0.6
-/// @date 2013-06-21
+/// @date 2013-06-25
 
-#ifndef LAYERATTRDEF_H_
-#define LAYERATTRDEF_H_
+#ifndef LAYERALLRECORDS_H_
+#define LAYERALLRECORDS_H_
 
 class OGRLayer;
 
+typedef enum {
+	FTInteger = 0, FTReal = 2, FTString = 4, FTBinary = 8, FTDate = 9
+} FieldType;
+
 typedef struct {
-	int sztitlelength_;
-	char *sztitle_;
+	int strlength_;
+	char * str_;
+} FieldStringType;
 
-	int nWidth_;
-	int nDecimals_;
+typedef struct {
+	int byteslength_;
+	char * bytes_;
+} FieldBinaryType;
+
+typedef struct {
+	int year_, mon_, day_, hour_, min_, sec_, tag_;
+} FieldDateType;
+
+typedef struct {
 	char fieldtype_;
-} LayerAttrDefField;
+	union {
+		int ivalue_;
+		double dvalue_;
+		FieldStringType svalue_;
+		FieldBinaryType bvalue_;
+		FieldDateType tvalue_;
+	} field_;
 
-class LayerAttrDef {
+} LayerRecordField;
+
+class LayerAllRecords {
 public:
-	LayerAttrDef();
-	LayerAttrDef(const LayerAttrDef & attrdef);
-	LayerAttrDef(const OGRLayer *layer);
-	LayerAttrDef(const char * bytes);
-	~LayerAttrDef();
+	LayerAllRecords();
+	LayerAllRecords(const LayerAllRecords & allrecords);
+	LayerAllRecords(OGRLayer *layer);
+	LayerAllRecords(const char * bytes);
+	~LayerAllRecords();
 
 	const char *getBytes();
 
-	int getAttrDefLength() const;
+	int getRecordLength() const;
+	int getRecordCount() const;
 	int getFieldCount() const;
-	const LayerAttrDefField *getFields() const;
-	const LayerAttrDefField *getField(int index) const;
+	const LayerRecordField *getRecords() const;
+	const LayerRecordField *getRecord(int index) const;
+	const LayerRecordField *getRecordField(int rindex, int findex) const;
 
-	void setAttrDef(const OGRLayer *layer);
-	void setAttrDef(const char * bytes);
-	void setAttrDef(const LayerAttrDef & attrdef);
+	void setAllRecords(OGRLayer *layer);
+	void setAllRecords(const char * bytes);
+	void setAllRecords(const LayerAllRecords & allrecords);
+
 private:
 	typedef enum {
 		UNINITIALIZED, STALE, LATEST
 	} BufferFlagType;
 
-	void operator=(const LayerAttrDef &);
+	void operator=(const LayerAllRecords &);
 
-	int attrdeflength_;
+	int recordlength_;
+	int recordcount_;
 	int fieldcount_;
-	LayerAttrDefField *fields_;
+
+	LayerRecordField * fields_;
 
 	char *buffer_;
 	BufferFlagType bufferflag_;
 };
 
-#endif /* LAYERATTRDEF_H_ */
+#endif /* LAYERALLRECORDS_H_ */
