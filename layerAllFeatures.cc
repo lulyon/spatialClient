@@ -13,7 +13,7 @@
 #include <ogrsf_frmts.h>
 
 LayerAllFeatures::LayerAllFeatures() :
-  	featurelength_(0), featurecount_(0), features_(NULL), buffer_(NULL), bufferflag_(
+		featurelength_(0), featurecount_(0), features_(NULL), buffer_(NULL), bufferflag_(
 				UNINITIALIZED) {
 }
 
