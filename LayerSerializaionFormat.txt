@@ -6,7 +6,7 @@
 
 serialization format of layer object and its sub object(LayerMetadata, LayerAttrDef, LayerAllFeatures, LayerAllRecords). 
 
-class layer {
+class Layer {
 	int length_;
 	LayerMetadata metadata;
 	LayerAttrDef attrdef;
