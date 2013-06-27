@@ -5,6 +5,7 @@
 /// @date 2013-06-27
 
 serialization format of layer object and its sub object(LayerMetadata, LayerAttrDef, LayerAllFeatures, LayerAllRecords). 
+Freemind map view at http://pgcoder.sinaapp.com/LayerSerializationFormat.html . 
 
 class Layer {
 	int length_;
