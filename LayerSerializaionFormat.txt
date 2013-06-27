@@ -1,0 +1,86 @@
+/// @file LayerSerializaionFormat.txt
+/// @author luliang@ict.ac.cn
+/// @copybrief Copyright 2013 ICT, CAS. All rights reserved.
+/// @version 0.1
+/// @date 2013-06-27
+
+serialization format of layer object and its sub object(LayerMetadata, LayerAttrDef, LayerAllFeatures, LayerAllRecords). 
+
+class layer {
+  int length_;
+	LayerMetadata metadata;
+	LayerAttrDef attrdef;
+	LayerAllFeatures allfeatures;
+	LayerAllRecords allrecords;
+}
+
+class LayerMetadata {
+	int metadatalength_;
+	int layernamelength_;
+	char * layername_;
+	int geotype_;
+	int strWKTlength_;
+	char * strWKT_;
+}
+
+class LayerAttrDef {
+	int attrdeflength_;
+	int fieldcount_;
+	LayerAttrDefField *fields_;
+}
+
+typedef struct {
+	int sztitlelength_;
+	char *sztitle_;
+
+	int nWidth_;
+	int nDecimals_;
+	char fieldtype_;
+} LayerAttrDefField;
+
+class LayerAllFeatures {
+	int featurelength_;
+	int featurecount_;
+
+	LayerFeature *features_;
+}
+
+typedef struct {
+	int geometrytype_;
+	int wkbsize_;
+	char *wkbbytes_;
+} LayerFeature;
+
+
+class LayerAllRecords {
+	int recordlength_;
+	int recordcount_;
+	int fieldcount_;
+
+	LayerRecordField * fields_;
+}
+
+typedef struct {
+	int strlength_;
+	char * str_;
+} FieldStringType;
+
+typedef struct {
+	int byteslength_;
+	char * bytes_;
+} FieldBinaryType;
+
+typedef struct {
+	int year_, mon_, day_, hour_, min_, sec_, tag_;
+} FieldDateType;
+
+typedef struct {
+	char fieldtype_;
+	union {
+		int ivalue_;
+		double dvalue_;
+		FieldStringType svalue_;
+		FieldBinaryType bvalue_;
+		FieldDateType tvalue_;
+	} field_;
+} LayerRecordField;
